@@ -568,6 +568,7 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 def main(preprocessed_dir, plot_dir, fold_paths, device):
     for fold in range(1):
         #Loading MedicalNet model and weights
+        sets = parse_opts()
         sets.model = 'resnet'
         sets.model_depth = 18
         sets.resnet_shortcut = 'A'
