@@ -579,7 +579,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
             input_W=256,
             no_cuda=False,
             n_seg_classes=5,
-            gpu_id=0,
+            gpu_id=[0],
 
         )
 
