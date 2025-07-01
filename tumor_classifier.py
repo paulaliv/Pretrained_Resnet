@@ -599,7 +599,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         base_model, _ = generate_model(sets)
 
         # Load pretrained weights
-        pretrained_dict = torch.load('resnet_18.pth')['state_dict']
+        pretrained_dict = torch.load('pretrain/resnet_18.pth')['state_dict']
         base_model.load_state_dict(pretrained_dict)
 
 
