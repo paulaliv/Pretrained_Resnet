@@ -27,7 +27,7 @@ from monai.losses import FocalLoss
 from model import generate_model
 from setting import parse_opts
 from monai.networks.nets import DenseNet121, DenseNet169
-
+from monai.networks.nets import ResNet
 from monai.transforms import (
     Compose, LoadImaged, EnsureChannelFirstd, RandFlipd, RandRotate90d, RandGaussianNoised, NormalizeIntensityd,
     ToTensord
@@ -90,7 +90,7 @@ class ResNetWithClassifier(nn.Module):
     def forward(self, x):
         x = self.encoder(x)
         print(f'Shape after encoder: {x.shape}')
-    
+
 
         return self.classifier(x)
 
