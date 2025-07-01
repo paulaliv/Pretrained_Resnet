@@ -65,7 +65,15 @@ tumor_to_idx = {
 class ResNetWithClassifier(nn.Module):
     def __init__(self, base_model, in_channels=1, num_classes=5):  # change num_classes to match your setting
         super().__init__()
-        self.encoder = nn.Sequential(*list(base_model.children())[:-1])
+        self.encoder = ResNet(
+            block="basic",  # "BASIC" for ResNet18/34, "BOTTLE" for ResNet50+
+            layers=[2, 2, 2, 2],  # ResNet18 config
+            n_input_channels=in_channels,
+            num_classes=5,
+            feed_forward=False,
+            block_inplanes=[64, 128, 256, 512]
+        )
+
 
         #might not be needed
         self.pool = nn.AdaptiveAvgPool3d(1)
@@ -81,12 +89,8 @@ class ResNetWithClassifier(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
-        print(f'Shape before pooling {x.shape}')
-        x = self.pool(x)
-        print(f'Shape after pooling {x.shape}')
-        #pooled = self.pool(x)
-        x = x.view(x.size(0), -1)
-        print(f'Shape after reshape{x.shape}')
+        print(f'Shape after encoder: {x.shape}')
+    
 
         return self.classifier(x)
 
