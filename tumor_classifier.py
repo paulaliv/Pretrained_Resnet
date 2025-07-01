@@ -577,10 +577,23 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
             input_D=48,
             input_H=272,
             input_W=256,
-            no_cuda=False,
+            n_input_channels=1,
             n_seg_classes=5,
             gpu_id=[0],
-
+            no_cuda=False,
+            phase='train',
+            pretrain_path='pretrain/resnet_50.pth',
+            new_layer_names=['conv_seg'],
+            manual_seed=1,
+            learning_rate=0.001,
+            batch_size=4,
+            num_workers=4,
+            resume_path='',
+            save_intervals=10,
+            n_epochs=200,
+            data_root=preprocessed_dir,
+            img_list='./data/train.txt',
+            ci_test=False,
         )
 
         base_model, _ = generate_model(sets)
