@@ -24,6 +24,7 @@ import seaborn as sns
 from monai.losses import FocalLoss
 #imported model from MedicalNet
 #from models import resnet18
+from model import generate_model
 
 from monai.networks.nets import DenseNet121, DenseNet169
 
@@ -212,7 +213,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     class_weights = 1.0 / class_counts
     #class_weights = class_weights / class_weights.sum()
 
-    loss_function = FocalLoss(
+    loss_function = FlssocalLoss(
         to_onehot_y= True,
         use_softmax=True,
         gamma=3.0,
