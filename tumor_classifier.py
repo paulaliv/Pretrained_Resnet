@@ -25,7 +25,7 @@ from monai.losses import FocalLoss
 #imported model from MedicalNet
 #from models import resnet18
 from model import generate_model
-
+from setting import parse_opts
 from monai.networks.nets import DenseNet121, DenseNet169
 
 from monai.transforms import (
