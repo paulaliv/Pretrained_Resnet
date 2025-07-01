@@ -582,7 +582,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
             gpu_id=[0],
             no_cuda=False,
             phase='train',
-            pretrain_path='pretrain/resnet_50.pth',
+            pretrain_path='pretrain/resnet_18.pth',
             new_layer_names=['conv_seg'],
             manual_seed=1,
             learning_rate=0.001,
