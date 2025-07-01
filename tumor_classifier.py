@@ -568,12 +568,17 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 def main(preprocessed_dir, plot_dir, fold_paths, device):
     for fold in range(1):
         #Loading MedicalNet model and weights
-        sets = parse_opts()
-        sets.model = 'resnet'
-        sets.model_depth = 18
-        sets.resnet_shortcut = 'A'
-        sets.input_D, sets.input_H, sets.input_W = 48, 272, 256  # or whatever your input is
-        sets.n_classes = 400  # temporary, we’ll replace the classifier
+        from argparse import Namespace
+
+        sets = Namespace(
+            model='resnet',
+            model_depth=18,
+            resnet_shortcut='A',
+            input_D=48,
+            input_H=272,
+            input_W=256,
+            n_classes=400
+        )
 
         base_model, _ = generate_model(sets)
 
