@@ -352,9 +352,9 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 plt.ylabel("True Label", fontsize=12)
                 plt.xticks(rotation=45, ha='right')
                 plt.tight_layout()  # Ensures everything fits in the figure area
-                plt.savefig(os.path.join(plot_dir, f"confusion_matrix_fold_{fold}.png"))
+                plt.savefig(os.path.join(plot_dir, f"Pretrain_confusion_matrix_fold_{fold}.png"))
                 plt.close()
-                file = os.path.join(plot_dir, f"classification_report_fold_{fold}.txt")
+                file = os.path.join(plot_dir, f"Pretrain_classification_report_fold_{fold}.txt")
 
                 print('Best Report')
                 print(best_report)
@@ -627,7 +627,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         plt.ylabel('Loss')
         plt.legend()
         plt.title('Loss Curves')
-        plt.savefig(os.path.join(plot_dir, 'loss_curves.png'))
+        plt.savefig(os.path.join(plot_dir, 'pretrain_loss_curves.png'))
 
 def extract_features(train_dir, fold_paths, device, plot_dir):
     model = TumorClassifier(model_depth=18, in_channels=1, num_classes=5)
