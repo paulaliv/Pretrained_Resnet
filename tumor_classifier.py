@@ -577,7 +577,8 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
             input_D=48,
             input_H=272,
             input_W=256,
-            n_classes=400
+            n_classes=400,
+            no_cuda=False
         )
 
         base_model, _ = generate_model(sets)
