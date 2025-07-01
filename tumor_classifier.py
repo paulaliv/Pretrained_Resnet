@@ -81,10 +81,13 @@ class ResNetWithClassifier(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
-        # print(f'Shape before pooling {x.shape}')
-        # x = self.pool(x)
-        # print(f'Shape after pooling {x.shape}')
+        print(f'Shape before pooling {x.shape}')
+        x = self.pool(x)
+        print(f'Shape after pooling {x.shape}')
         #pooled = self.pool(x)
+        x = x.view(x.size(0), -1)
+        print(f'Shape after reshape{x.shape}')
+
         return self.classifier(x)
 
     def extract_features(self, x):
