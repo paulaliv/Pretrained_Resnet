@@ -577,7 +577,8 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
             input_D=48,
             input_H=272,
             input_W=256,
-            no_cuda=False
+            no_cuda=False,
+            n_seg_classes = 5,
 
         )
 
