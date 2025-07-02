@@ -729,7 +729,7 @@ if __name__ == '__main__':
     preprocessed= sys.argv[1]
     plot_dir = sys.argv[2]
 
-
-    main(preprocessed, plot_dir, fold_paths, device = 'cuda')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    main(preprocessed, plot_dir, fold_paths, device )
     #extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
 
