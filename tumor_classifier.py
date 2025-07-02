@@ -623,6 +623,12 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         for k in list(base_model.state_dict().keys())[:10]:
             print(k)
 
+        for k, v in pretrained_dict.items():
+            print(f"{k}: {v.shape}")
+
+        for k, v in base_model.state_dict().items():
+            print(f"{k}: {v.shape}")
+
         matched_keys = [k for k in pretrained_dict if k in model_dict]
         print(f"{len(matched_keys)} of {len(pretrained_dict)} keys matched with model.")
 
