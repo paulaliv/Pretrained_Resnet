@@ -591,7 +591,7 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 #     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
 #     return model
 
-def main(preprocessed_dir, plot_dir, fold_paths, device):
+def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
     for fold in range(1):
         #Loading MedicalNet model and weights
         from argparse import Namespace
@@ -625,8 +625,8 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         base_model, _ = generate_model(sets)
 
         # Load pretrained weights
-        weights = "/gpfs/home6/palfken/Pretrained_Resnet/pretrain/resnet_18.pth"
-
+        #weights = "/gpfs/home6/palfken/Pretrained_Resnet/pretrain/resnet_18.pth"
+        weights = os.path_join(pretrain,'resnet_18.pth')
         pretrained_dict = torch.load(weights)['state_dict']
         base_model.load_state_dict(pretrained_dict,strict=False)
 
@@ -752,8 +752,9 @@ if __name__ == '__main__':
     }
     preprocessed= sys.argv[1]
     plot_dir = sys.argv[2]
+    pretrain = sys.argv[3]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    main(preprocessed, plot_dir, fold_paths, device )
+    main(preprocessed, plot_dir, fold_paths, pretrain, device )
     #extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
 
