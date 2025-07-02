@@ -231,7 +231,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
         scaler = GradScaler()
 
-        for batch in train_loader:
+        for batch_id, batch in train_loader:
             inputs = batch['input'].to(device)
             labels = batch['label'].to(device)
             #print("Input shape:", inputs.shape)
