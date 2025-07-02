@@ -119,6 +119,12 @@ class QADataset(Dataset):
         self.transform = transform
 
         self.tumor_to_idx = tumor_to_idx
+#         tumor_to_idx = {
+    #     "MyxofibroSarcomas": 0,
+    #     "LeiomyoSarcomas": 1,
+    #     "DTF": 2,
+    #     "LipoSarcoma": 3,
+# }
 
     def __len__(self):
         return len(self.case_ids)
@@ -130,6 +136,7 @@ class QADataset(Dataset):
         subtype = subtype.strip()
 
         label_idx = self.tumor_to_idx[subtype]
+        print(f'Case {case_id}: tumor mapping {subtype} --> {label_idx}')
         # Load preprocessed image (.npz)
         #Check if its not case_id_0000
         # data, seg, seg_prev, properties = self.ds.load_case(case_id)
@@ -279,9 +286,18 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         train_losses.append(epoch_train_loss)
 
         if epoch % 5 == 0:
+            tumor_to_idx = {
+                "MyxofibroSarcomas": 0,
+                "LeiomyoSarcomas": 1,
+                "DTF": 2,
+                "LipoSarcoma": 3,
+            }
             idx_to_tumor = {v: k for k, v in tumor_to_idx.items()}
             pred_tumors = [idx_to_tumor[p] for p in preds_list]
             true_tumors = [idx_to_tumor[t] for t in labels_list]
+
+            for prediction in range(len(pred_tumors)):
+                print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
 
             print(classification_report(true_tumors, pred_tumors, digits=4, zero_division=0))
         del inputs, outputs,labels, preds
@@ -320,7 +336,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
 
         warmup_epochs = 10
-        base_lr = 1e-4
+        base_lr = 1e-3
         if epoch < warmup_epochs:
             lr_scale = (epoch + 1) / warmup_epochs
             for param_group in optimizer.param_groups:
