@@ -83,7 +83,6 @@ class ResNetWithClassifier(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
-        print(f'Shape after encoder: {x.shape}')
 
 
         return self.classifier(x)
@@ -219,6 +218,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         gamma=3.0
         #weight=class_weights.to(device)  # alpha term
     )
+
+    base_params = list(model.encoder.parameters())
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
     for epoch in range(num_epochs):
@@ -242,10 +243,23 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 preds_cpu = preds.detach().cpu()
                 labels_cpu = labels.detach().cpu()
 
-
+            # Copy base_model weights before update
+            params_before = [p.clone().detach() for p in base_params]
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
+
+            params_after = list(model.base_model.parameters())
+            updated = False
+            for before, after in zip(params_before, params_after):
+                if not torch.allclose(before, after, atol=1e-7):
+                    updated = True
+                    break
+
+            if updated:
+                print(f"Base model weights updated at epoch {epoch}, batch {batch_id}")
+            else:
+                print(f"Warning: Base model weights NOT updated at epoch {epoch}, batch {batch_id}")
 
             running_loss += loss.item() * inputs.size(0)
             correct += torch.sum(preds == labels.data)
@@ -616,14 +630,19 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         base_model.load_state_dict(pretrained_dict,strict=False)
 
         missing_keys, unexpected_keys = base_model.load_state_dict(pretrained_dict, strict=False)
-        print(f"Missing keys: {missing_keys}")
-        print(f"Unexpected keys: {unexpected_keys}")
+        # print(f"Missing keys: {missing_keys}")
+        # print(f"Unexpected keys: {unexpected_keys}")
+        #
+        # matched_keys = [k for k in pretrained_dict if k in list(base_model.state_dict().keys())]
+        # print(f"{len(matched_keys)} of {len(pretrained_dict)} keys matched with model.")
 
-        matched_keys = [k for k in pretrained_dict if k in list(base_model.state_dict().keys())]
-        print(f"{len(matched_keys)} of {len(pretrained_dict)} keys matched with model.")
+        # Make sure encoder params require grad
+
 
 
         model = ResNetWithClassifier(base_model, in_channels =1, num_classes=4)
+        for param in model.encoder.parameters():
+            param.requires_grad = True
         model.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, min_lr=1e-6)
