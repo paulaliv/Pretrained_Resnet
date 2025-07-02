@@ -200,7 +200,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         transform=val_transforms
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, pin_memory=True, num_workers=4)
 
     class_counts = torch.tensor([
@@ -216,8 +216,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     loss_function = FocalLoss(
         to_onehot_y= True,
         use_softmax=True,
-        gamma=3.0,
-        weight=class_weights.to(device)  # alpha term
+        gamma=3.0
+        #weight=class_weights.to(device)  # alpha term
     )
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
@@ -615,6 +615,8 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         pretrained_dict = torch.load(weights)['state_dict']
         base_model.load_state_dict(pretrained_dict,strict=False)
 
+        matched_keys = [k for k in pretrained_dict if k in model_dict]
+        print(f"{len(matched_keys)} of {len(pretrained_dict)} keys matched with model.")
 
 
         model = ResNetWithClassifier(base_model, in_channels =1, num_classes=4)
