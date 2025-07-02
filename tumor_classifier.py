@@ -65,18 +65,13 @@ tumor_to_idx = {
 class ResNetWithClassifier(nn.Module):
     def __init__(self, base_model, in_channels=1, num_classes=5):  # change num_classes to match your setting
         super().__init__()
-        self.encoder = ResNet(
-            block="basic",  # "BASIC" for ResNet18/34, "BOTTLE" for ResNet50+
-            layers=[2, 2, 2, 2],  # ResNet18 config
-            n_input_channels=in_channels,
-            num_classes=5,
-            feed_forward=False,
-            block_inplanes=[64, 128, 256, 512]
-        )
+        self.encoder = base_model
+        # if base_model_path:
+        #     self.encoder = load_pretrained_weights(self.encoder, base_model_path)
 
 
         #might not be needed
-        self.pool = nn.AdaptiveAvgPool3d(1)
+        #self.pool = nn.AdaptiveAvgPool3d(1)
 
 
         self.classifier = nn.Sequential(
@@ -571,6 +566,17 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
     plt.savefig(os.path.join(plot_dir, 'MMD_diag_vs_offdiag.png'))
     plt.close()
 
+# def load_pretrained_weights(model, checkpoint_path):
+#     checkpoint = torch.load(checkpoint_path)
+#     model_dict = model.state_dict()
+#
+#     # Filter out unnecessary keys
+#     pretrained_dict = {k: v for k, v in checkpoint['state_dict'].items() if k in model_dict and v.size() == model_dict[k].size()}
+#     model_dict.update(pretrained_dict)
+#     model.load_state_dict(model_dict, strict=False)
+#
+#     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
+#     return model
 
 def main(preprocessed_dir, plot_dir, fold_paths, device):
     for fold in range(1):

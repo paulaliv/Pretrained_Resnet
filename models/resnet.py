@@ -210,8 +210,14 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = self.conv_seg(x)
-
+        #remove final segmentation head, so its just the encoder
+        #x = self.conv_seg(x)
+        # Global average pooling to get a feature vector
+        print(f'Shape after last layer: {x.shape}')
+        x = F.adaptive_avg_pool3d(x, (1, 1, 1))
+        print(f'Shape after pooling: {x.shape}')
+        x = x.view(x.size(0), -1)  # Flatten to (B, C)
+        print(f'Shape after flatten: {x.shape}')
         return x
 
 def resnet10(**kwargs):
