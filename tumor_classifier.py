@@ -56,8 +56,7 @@ tumor_to_idx = {
     "MyxofibroSarcomas": 0,
     "LeiomyoSarcomas": 1,
     "DTF": 2,
-    "MyxoidlipoSarcoma": 3,
-    "WDLPS": 4,
+    "LipoSarcoma": 3,
 }
 
 
@@ -208,8 +207,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         46,  # MyxofibroSarcomas (idx 0)
         24,  # LeiomyoSarcomas    (idx 1)
         54,  # DTF                (idx 2)
-        28,  # MyxoidlipoSarcoma  (idx 3)
-        44,  # WDLPS              (idx 4)
+        72,  # LipoSarcoma  (idx 3)
     ], dtype=torch.float)
 
     class_weights = 1.0 / class_counts
@@ -339,7 +337,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 print("⏹️ Early stopping")
                 model.load_state_dict(best_model_wts)
 
-                labels = ["DTF", "LeiomyoSarcomas", "MyxofibroSarcomas", "MyxoidlipoSarcoma", "WDLPS"]
+                labels = ["DTF", "LeiomyoSarcomas", "MyxofibroSarcomas", "LipoSarcoma"]
                 plt.figure(figsize=(8, 6))  # Increase figure size
                 sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=labels, yticklabels=labels)
                 plt.title("Confusion Matrix - Fold 0", fontsize=14)
