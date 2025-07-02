@@ -63,7 +63,7 @@ tumor_to_idx = {
 
 
 class ResNetWithClassifier(nn.Module):
-    def __init__(self, base_model, in_channels=1, num_classes=5):  # change num_classes to match your setting
+    def __init__(self, base_model, in_channels=1, num_classes=4):  # change num_classes to match your setting
         super().__init__()
         self.encoder = base_model
         # if base_model_path:
@@ -115,7 +115,7 @@ class QADataset(Dataset):
         # List of case_ids
         self.case_ids = self.metadata['case_id'].tolist()
         #self.dice_scores = self.metadata['dice'].tolist()
-        self.subtypes = self.metadata['subtype'].tolist()
+        self.subtypes = self.metadata['subtype_merged'].tolist()
         #self.ds = nnUNetDatasetBlosc2(self.preprocessed_dir)
 
         self.transform = transform
@@ -591,7 +591,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
             input_H=272,
             input_W=256,
             n_input_channels=1,
-            n_seg_classes=5,
+            n_seg_classes=4,
             gpu_id=[0],
             no_cuda=False,
             phase='train',
@@ -619,7 +619,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
 
 
 
-        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=5)
+        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=4)
         model.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, min_lr=1e-6)
@@ -638,7 +638,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         plt.savefig(os.path.join(plot_dir, 'pretrain_loss_curves.png'))
 
 def extract_features(train_dir, fold_paths, device, plot_dir):
-    model = TumorClassifier(model_depth=18, in_channels=1, num_classes=5)
+    model = TumorClassifier(model_depth=18, in_channels=1, num_classes=4)
     model.load_state_dict(torch.load("best_model_fold_0.pth", map_location=device))
     model.to(device)
     model.eval()
