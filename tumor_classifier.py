@@ -220,6 +220,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     )
 
     base_params = list(model.encoder.parameters())
+    print(base_params)
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
     for epoch in range(num_epochs):
@@ -249,7 +250,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             scaler.step(optimizer)
             scaler.update()
 
-            params_after = list(model.base_model.parameters())
+            params_after = list(model.encoder.parameters())
             updated = False
             for before, after in zip(params_before, params_after):
                 if not torch.allclose(before, after, atol=1e-7):
