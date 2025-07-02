@@ -615,19 +615,9 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         pretrained_dict = torch.load(weights)['state_dict']
         base_model.load_state_dict(pretrained_dict,strict=False)
 
-        print("Checkpoint keys:")
-        for k in list(pretrained_dict.keys())[:10]:
-            print(k)
-
-        print("\nModel keys:")
-        for k in list(base_model.state_dict().keys())[:10]:
-            print(k)
-
-        for k, v in pretrained_dict.items():
-            print(f"{k}: {v.shape}")
-
-        for k, v in base_model.state_dict().items():
-            print(f"{k}: {v.shape}")
+        missing_keys, unexpected_keys = base_model.load_state_dict(pretrained_dict, strict=False)
+        print(f"Missing keys: {missing_keys}")
+        print(f"Unexpected keys: {unexpected_keys}")
 
         matched_keys = [k for k in pretrained_dict if k in list(base_model.state_dict().keys())]
         print(f"{len(matched_keys)} of {len(pretrained_dict)} keys matched with model.")
