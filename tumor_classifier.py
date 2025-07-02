@@ -595,7 +595,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
     for fold in range(1):
         #Loading MedicalNet model and weights
         from argparse import Namespace
-
+        weights = os.path_join(pretrain, 'resnet_18.pth')
         sets = Namespace(
             model='resnet',
             model_depth=18,
@@ -608,7 +608,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
             gpu_id=[0],
             no_cuda=False,
             phase='train',
-            pretrain_path='pretrain/resnet_18.pth',
+            pretrain_path=weights,
             new_layer_names=['conv_seg'],
             manual_seed=1,
             learning_rate=0.001,
@@ -626,7 +626,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
 
         # Load pretrained weights
         #weights = "/gpfs/home6/palfken/Pretrained_Resnet/pretrain/resnet_18.pth"
-        weights = os.path_join(pretrain,'resnet_18.pth')
+
         pretrained_dict = torch.load(weights)['state_dict']
         base_model.load_state_dict(pretrained_dict,strict=False)
 
