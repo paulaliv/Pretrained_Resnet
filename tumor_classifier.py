@@ -215,12 +215,12 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     loss_function = FocalLoss(
         to_onehot_y= True,
         use_softmax=True,
-        gamma=3.0
-        #weight=class_weights.to(device)  # alpha term
+        gamma=2.0,
+        weight=class_weights.to(device)  # alpha term
     )
 
     base_params = list(model.encoder.parameters())
-    print(base_params)
+    #print(base_params)
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
     for epoch in range(num_epochs):
@@ -245,22 +245,22 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 labels_cpu = labels.detach().cpu()
 
             # Copy base_model weights before update
-            params_before = [p.clone().detach() for p in base_params]
+            # params_before = [p.clone().detach() for p in base_params]
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
 
-            params_after = list(model.encoder.parameters())
-            updated = False
-            for before, after in zip(params_before, params_after):
-                if not torch.allclose(before, after, atol=1e-7):
-                    updated = True
-                    break
-
-            if updated:
-                print(f"Base model weights updated at epoch {epoch}, batch {batch_id}")
-            else:
-                print(f"Warning: Base model weights NOT updated at epoch {epoch}, batch {batch_id}")
+            # params_after = list(model.encoder.parameters())
+            # updated = False
+            # for before, after in zip(params_before, params_after):
+            #     if not torch.allclose(before, after, atol=1e-7):
+            #         updated = True
+            #         break
+            #
+            # if updated:
+            #     print(f"Base model weights updated at epoch {epoch}, batch {batch_id}")
+            # else:
+            #     print(f"Warning: Base model weights NOT updated at epoch {epoch}, batch {batch_id}")
 
             running_loss += loss.item() * inputs.size(0)
             correct += torch.sum(preds == labels.data)
