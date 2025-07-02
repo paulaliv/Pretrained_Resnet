@@ -613,7 +613,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, device):
         weights = "/gpfs/home6/palfken/Pretrained_Resnet/pretrain/resnet_18.pth"
 
         pretrained_dict = torch.load(weights)['state_dict']
-        base_model.load_state_dict(pretrained_dict,strict=False)
+        model_dict = base_model.load_state_dict(pretrained_dict,strict=False)
 
         matched_keys = [k for k in pretrained_dict if k in model_dict]
         print(f"{len(matched_keys)} of {len(pretrained_dict)} keys matched with model.")
