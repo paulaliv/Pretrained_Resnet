@@ -595,7 +595,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
     for fold in range(1):
         #Loading MedicalNet model and weights
         from argparse import Namespace
-        weights = os.path_join(pretrain, 'resnet_18.pth')
+        weights = os.path.join(pretrain, 'resnet_18.pth')
         sets = Namespace(
             model='resnet',
             model_depth=18,
