@@ -348,9 +348,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            labels = ["DTF", "LeiomyoSarcomas", "MyxofibroSarcomas", "LipoSarcoma"]
-            label_indices = [tumor_to_idx[label] for label in labels]
-            cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = label_indices)
+            labels = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF","LipoSarcoma"]
+            cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
