@@ -296,7 +296,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             pred_tumors = [idx_to_tumor[p] for p in preds_list]
             true_tumors = [idx_to_tumor[t] for t in labels_list]
 
-            for prediction in range(len(pred_tumors)):
+            #for prediction in range(len(pred_tumors)):
                 #print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
 
             print(classification_report(true_tumors, pred_tumors, digits=4, zero_division=0))
