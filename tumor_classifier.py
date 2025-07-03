@@ -286,20 +286,13 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         train_losses.append(epoch_train_loss)
 
         if epoch % 5 == 0:
-            tumor_to_idx = {
-                "MyxofibroSarcomas": 0,
-                "LeiomyoSarcomas": 1,
-                "DTF": 2,
-                "LipoSarcoma": 3,
-            }
             idx_to_tumor = {v: k for k, v in tumor_to_idx.items()}
             pred_tumors = [idx_to_tumor[p] for p in preds_list]
             true_tumors = [idx_to_tumor[t] for t in labels_list]
-
-            #for prediction in range(len(pred_tumors)):
-                #print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
-
             print(classification_report(true_tumors, pred_tumors, digits=4, zero_division=0))
+            # for prediction in range(len(pred_tumors)):
+            # print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
+
         del inputs, outputs,labels, preds
         torch.cuda.empty_cache()
 
@@ -652,7 +645,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
         pretrained_dict = torch.load(weights)['state_dict']
         base_model.load_state_dict(pretrained_dict,strict=False)
 
-        missing_keys, unexpected_keys = base_model.load_state_dict(pretrained_dict, strict=False)
+        #missing_keys, unexpected_keys = base_model.load_state_dict(pretrained_dict, strict=False)
         # print(f"Missing keys: {missing_keys}")
         # print(f"Unexpected keys: {unexpected_keys}")
         #
