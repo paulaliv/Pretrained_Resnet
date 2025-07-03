@@ -136,7 +136,7 @@ class QADataset(Dataset):
         subtype = subtype.strip()
 
         label_idx = self.tumor_to_idx[subtype]
-        print(f'Case {case_id}: tumor mapping {subtype} --> {label_idx}')
+        #print(f'Case {case_id}: tumor mapping {subtype} --> {label_idx}')
         # Load preprocessed image (.npz)
         #Check if its not case_id_0000
         # data, seg, seg_prev, properties = self.ds.load_case(case_id)
@@ -297,7 +297,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             true_tumors = [idx_to_tumor[t] for t in labels_list]
 
             for prediction in range(len(pred_tumors)):
-                print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
+                #print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
 
             print(classification_report(true_tumors, pred_tumors, digits=4, zero_division=0))
         del inputs, outputs,labels, preds
@@ -355,7 +355,9 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            cm = confusion_matrix(val_true_tumors,val_pred_tumors)
+            labels = ["DTF", "LeiomyoSarcomas", "MyxofibroSarcomas", "LipoSarcoma"]
+            label_indices = [tumor_to_idx[label] for label in labels]
+            cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = label_indices)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
@@ -367,8 +369,12 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             if patience_counter >= patience:
                 print("⏹️ Early stopping")
                 model.load_state_dict(best_model_wts)
-
-                labels = ["DTF", "LeiomyoSarcomas", "MyxofibroSarcomas", "LipoSarcoma"]
+                # tumor_to_idx = {
+                #     "MyxofibroSarcomas": 0,
+                #     "LeiomyoSarcomas": 1,
+                #     "DTF": 2,
+                #     "LipoSarcoma": 3,
+                # }
                 plt.figure(figsize=(8, 6))  # Increase figure size
                 sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=labels, yticklabels=labels)
                 plt.title("Confusion Matrix - Fold 0", fontsize=14)
@@ -611,7 +617,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
     for fold in range(1):
         #Loading MedicalNet model and weights
         from argparse import Namespace
-        weights = os.path.join(pretrain, 'resnet_18.pth')
+        weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
         sets = Namespace(
             model='resnet',
             model_depth=18,
