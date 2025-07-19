@@ -331,13 +331,13 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 val_loss += loss.item() * inputs.size(0)
 
                 with torch.no_grad():
-                    decoded_preds = decode_predictions(outputs)
+                    decoded_preds = decode_predictions(outputs).detach().cpu()
                     val_correct += (decoded_preds == labels).sum().item()
 
 
                 val_total += labels.size(0)
 
-                val_preds_list.extend(preds_cpu.numpy())
+                val_preds_list.extend(decoded_preds_cpu.numpy())
                 val_labels_list.extend(labels_cpu.numpy())
 
         epoch_val_loss = val_loss / val_total
@@ -346,6 +346,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         print(f"Val Loss: {epoch_val_loss:.4f}, Val Acc: {epoch_val_acc:.4f}")
 
         val_losses.append(epoch_val_loss)
+        assert len(val_preds_list) == len(val_labels_list), \
+            f"Mismatch in lengths: preds={len(val_preds_list)}, labels={len(val_labels_list)}"
 
         val_pred_tumors = [idx_to_priority[p] for p in val_preds_list]
         val_true_tumors = [idx_to_priority[t] for t in val_labels_list]
