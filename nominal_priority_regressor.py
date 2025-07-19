@@ -331,8 +331,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 val_loss += loss.item() * inputs.size(0)
 
                 with torch.no_grad():
-                    decoded_preds = decode_predictions(outputs).detach().cpu()
-                    val_correct += (decoded_preds == labels.to(decoded_preds.device)).sum().item()
+                    decoded_preds_cpu = decode_predictions(outputs).detach().cpu()
+                    val_correct += (decoded_preds_cpu == labels.to(decoded_preds_cpu.device)).sum().item()
 
 
 
