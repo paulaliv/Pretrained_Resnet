@@ -56,7 +56,22 @@ tumor_to_idx = {
     "MyxofibroSarcomas": 0,
     "LeiomyoSarcomas": 1,
     "DTF": 2,
-    "LipoSarcoma": 3,
+    "MyxoidlipoSarcoma": 3,
+    "WDLPS":4
+
+}
+priority_mapping = {
+    'LeiomyoSarcomas': 'high_malignant',
+    'MyxoidlipoSarcoma': 'moderate_malignant',
+    'MyxofibroSarcomas': 'moderate_malignant',
+    'WDLPS': 'low_malignant',
+    'DTF': 'intermediate'
+}
+priority_to_idx = {
+'intermediate':0,
+'low_malignant':1,
+'moderate_malignant':2,
+'high_malignant':3
 }
 
 
@@ -113,7 +128,7 @@ class QADataset(Dataset):
         # List of case_ids
         self.case_ids = self.metadata['case_id'].tolist()
         #self.dice_scores = self.metadata['dice'].tolist()
-        self.subtypes = self.metadata['subtype_merged'].tolist()
+        self.subtypes = self.metadata['subtype'].tolist()
         #self.ds = nnUNetDatasetBlosc2(self.preprocessed_dir)
 
         self.transform = transform
@@ -136,24 +151,12 @@ class QADataset(Dataset):
         subtype = subtype.strip()
 
         label_idx = self.tumor_to_idx[subtype]
-        #print(f'Case {case_id}: tumor mapping {subtype} --> {label_idx}')
-        # Load preprocessed image (.npz)
-        #Check if its not case_id_0000
-        # data, seg, seg_prev, properties = self.ds.load_case(case_id)
-        #print("Data shape:", data.shape)
-        file = f'{case_id}_resized.pt'
-        image = torch.load(os.path.join(self.preprocessed_dir, file))
+        image = np.load(os.path.join(self.data_dir, f'{case_id}_img.npy'))
 
-        # file = f'{case_id}_features_roi.npz'
-        # feat1 = np.load(os.path.join(self.preprocessed_dir, file))
-        # image = feat1[feat1.files[0]]
+        image_tensor = torch.from_numpy(image).float().unsqueeze(0)
 
 
-        assert image.ndim == 4 and image.shape[0] == 1, f"Expected shape (1, H, W, D), but got {image.shape}"
-        #image = np.asarray(image)
-        #print(f'Image Shape {image.shape}')
-
-        data_dict = {'image': image }
+        data_dict = {'image': image_tensor }
         # nnU-Net raw images usually have multiple channels; choose accordingly:
         # Here, just take channel 0 for simplicity:
         #input_image = np.stack([image[0], pred_mask], axis=0)  # (2, H, W, D)
@@ -222,9 +225,10 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     loss_function = FocalLoss(
         to_onehot_y= True,
         use_softmax=True,
-        gamma=2.0,
-        weight=class_weights.to(device)  # alpha term
+        gamma=2.0
     )
+
+    scaler = GradScaler()
 
     base_params = list(model.encoder.parameters())
     #print(base_params)
@@ -236,7 +240,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         running_loss, correct, total = 0.0, 0, 0
         preds_list, labels_list = [], []
 
-        scaler = GradScaler()
+
 
         for batch_id, batch in enumerate(train_loader):
             inputs = batch['input'].to(device)
@@ -257,17 +261,6 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             scaler.step(optimizer)
             scaler.update()
 
-            # params_after = list(model.encoder.parameters())
-            # updated = False
-            # for before, after in zip(params_before, params_after):
-            #     if not torch.allclose(before, after, atol=1e-7):
-            #         updated = True
-            #         break
-            #
-            # if updated:
-            #     print(f"Base model weights updated at epoch {epoch}, batch {batch_id}")
-            # else:
-            #     print(f"Warning: Base model weights NOT updated at epoch {epoch}, batch {batch_id}")
 
             running_loss += loss.item() * inputs.size(0)
             correct += torch.sum(preds == labels.data)
@@ -348,7 +341,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            labels = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF","LipoSarcoma"]
+            labels = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF","MyxoidlipoSarcoma","WDLPS"]
             cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
@@ -361,12 +354,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             if patience_counter >= patience:
                 print("⏹️ Early stopping")
                 model.load_state_dict(best_model_wts)
-                # tumor_to_idx = {
-                #     "MyxofibroSarcomas": 0,
-                #     "LeiomyoSarcomas": 1,
-                #     "DTF": 2,
-                #     "LipoSarcoma": 3,
-                # }
+
                 plt.figure(figsize=(8, 6))  # Increase figure size
                 sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=labels, yticklabels=labels)
                 plt.title("Confusion Matrix - Fold 0", fontsize=14)
@@ -618,7 +606,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
             input_H=272,
             input_W=256,
             n_input_channels=1,
-            n_seg_classes=4,
+            n_seg_classes=5,
             gpu_id=[0],
             no_cuda=False,
             phase='train',
@@ -644,18 +632,8 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
         pretrained_dict = torch.load(weights)['state_dict']
         base_model.load_state_dict(pretrained_dict,strict=False)
 
-        #missing_keys, unexpected_keys = base_model.load_state_dict(pretrained_dict, strict=False)
-        # print(f"Missing keys: {missing_keys}")
-        # print(f"Unexpected keys: {unexpected_keys}")
-        #
-        # matched_keys = [k for k in pretrained_dict if k in list(base_model.state_dict().keys())]
-        # print(f"{len(matched_keys)} of {len(pretrained_dict)} keys matched with model.")
 
-        # Make sure encoder params require grad
-
-
-
-        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=4)
+        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=5)
         for param in model.encoder.parameters():
             param.requires_grad = True
         model.to(device)
