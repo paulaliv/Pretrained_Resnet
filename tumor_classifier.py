@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+from argparse import Namespace
 import torch
 from sklearn.metrics import classification_report, confusion_matrix
 import copy
@@ -606,7 +606,7 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
     for fold in range(1):
         #Loading MedicalNet model and weights
-        from argparse import Namespace
+
         weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
         sets = Namespace(
             model='resnet',
