@@ -256,7 +256,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     #print(base_params)
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
-    idx_to_priority = {v: k for k, v in self.priority_to_idx.items()}
+    idx_to_priority = {v: k for k, v in priority_to_idx.items()}
     for epoch in range(num_epochs):
         model.train()
         print(f"Epoch {epoch+1}/{num_epochs}")
