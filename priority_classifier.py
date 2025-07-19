@@ -77,7 +77,7 @@ priority_to_idx = {
 
 
 class ResNetWithClassifier(nn.Module):
-    def __init__(self, base_model, in_channels=1, num_classes=5):  # change num_classes to match your setting
+    def __init__(self, base_model, in_channels=1, num_classes=4):  # change num_classes to match your setting
         super().__init__()
         self.encoder = base_model
         # if base_model_path:
@@ -153,8 +153,9 @@ class QADataset(Dataset):
         subtype = subtype.strip()
 
 
-        label_idx = self.tumor_to_idx[subtype]
-
+        #label_idx = self.tumor_to_idx[subtype]
+        priority = self.priority_mapping[subtype]
+        label_idx = self.priority_to_idx[priority]
         image = np.load(os.path.join(self.preprocessed_dir, f'{case_id}_img.npy'))
 
         image_tensor = torch.from_numpy(image).float().unsqueeze(0)
@@ -235,8 +236,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         46,  # MyxofibroSarcomas (idx 0)
         24,  # LeiomyoSarcomas    (idx 1)
         54,  # DTF                (idx 2)
-        28,  # LipoSarcoma  (idx 3)
-        44
+        28
     ], dtype=torch.float)
 
     class_weights = 1.0 / class_counts
@@ -245,8 +245,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     loss_function = FocalLoss(
         to_onehot_y= True,
         use_softmax=True,
-        gamma=2.0,
-        weight=class_weights
+        gamma=2.0
+        #weight=class_weights
     )
 
     scaler = GradScaler()
@@ -255,6 +255,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     #print(base_params)
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
+
+    idx_to_priority = {v: k for k, v in priority_to_idx.items()}
     for epoch in range(num_epochs):
         model.train()
         print(f"Epoch {epoch+1}/{num_epochs}")
@@ -300,9 +302,9 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         train_losses.append(epoch_train_loss)
 
         if epoch % 5 == 0:
-            idx_to_tumor = {v: k for k, v in tumor_to_idx.items()}
-            pred_tumors = [idx_to_tumor[p] for p in preds_list]
-            true_tumors = [idx_to_tumor[t] for t in labels_list]
+
+            pred_tumors = [idx_to_priority[p] for p in preds_list]
+            true_tumors = [idx_to_priority[t] for t in labels_list]
             print(classification_report(true_tumors, pred_tumors, digits=4, zero_division=0))
             # for prediction in range(len(pred_tumors)):
             # print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
@@ -338,8 +340,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
         val_losses.append(epoch_val_loss)
 
-        val_pred_tumors = [idx_to_tumor[p] for p in val_preds_list]
-        val_true_tumors = [idx_to_tumor[t] for t in val_labels_list]
+        val_pred_tumors = [idx_to_priority[p] for p in val_preds_list]
+        val_true_tumors = [idx_to_priority[t] for t in val_labels_list]
         print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
 
         warmup_epochs = 10
@@ -362,7 +364,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            labels = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF","MyxoidlipoSarcoma","WDLPS"]
+            labels = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
             cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
@@ -658,7 +660,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
         base_model.load_state_dict(pretrained_dict,strict=False)
 
 
-        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=5)
+        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=4)
         for param in model.encoder.parameters():
             param.requires_grad = True
         model.to(device)
