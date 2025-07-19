@@ -471,6 +471,8 @@ def intra_class_distance(X_train, y_train):
 
 def plot_intra_class_distances(intra_class_dists_maha, intra_class_dists_euc, std_maha, std_euc,plot_dir):
     subtypes = list(intra_class_dists_maha.keys())
+    unique_subtypes = sorted(set(subtypes))
+    pretty_labels = [f"{tumor} ({tumor_to_idx[tumor]})" for tumor in unique_subtypes]
     maha_values = [intra_class_dists_maha[sub] for sub in subtypes]
     euc_values = [intra_class_dists_euc[sub] for sub in subtypes]
     maha_err = [std_maha[sub] for sub in subtypes]
@@ -489,7 +491,7 @@ def plot_intra_class_distances(intra_class_dists_maha, intra_class_dists_euc, st
     ax.set_title("Intra-Class Distance per Tumor Subtype (with Std)")
     ax.set_xticks(x)
 
-    ax.set_xticklabels(subtypes, rotation=45)
+    ax.set_xticklabels(pretty_labels, rotation=45)
     ax.legend()
     ax.grid(True, axis='y', linestyle='--', alpha=0.5)
 
