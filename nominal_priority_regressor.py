@@ -229,7 +229,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         transform=val_transforms
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, pin_memory=True, num_workers=4)
 
     tumor_to_idx = {
@@ -253,7 +253,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
     scaler = GradScaler()
 
-    base_params = list(model.encoder.parameters())
+
+    label_names = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
     #print(base_params)
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
@@ -353,17 +354,15 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         val_pred_priority= [idx_to_priority[p] for p in val_preds_list]
         val_true_priority = [idx_to_priority[t] for t in val_labels_list]
 
-        label_names = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
-
         report = classification_report(
             val_true_priority,
             val_pred_priority,
+            labels=label_names,
+            target_names=label_names,
             digits=4,
             zero_division=0
         )
         print(report)
-
-
         val_mae = mean_absolute_error(val_labels_list, val_preds_list)
 
         print(f"Val MAE: {val_mae:.4f}")
@@ -387,7 +386,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
-            labels = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
+
 
             best_report = classification_report(
                 val_true_priority,
@@ -397,7 +396,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             )
 
 
-            cm = confusion_matrix(val_true_priority,val_pred_priority, labels = labels)
+            cm = confusion_matrix(val_true_priority,val_pred_priority, labels = label_names)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
@@ -411,7 +410,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 model.load_state_dict(best_model_wts)
 
                 plt.figure(figsize=(8, 6))  # Increase figure size
-                sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=labels, yticklabels=labels)
+                sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=label_names, yticklabels=label_names)
                 plt.title("Confusion Matrix - Fold 0", fontsize=14)
                 plt.xlabel("Predicted Label", fontsize=12)
                 plt.ylabel("True Label", fontsize=12)
