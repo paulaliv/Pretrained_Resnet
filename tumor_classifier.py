@@ -234,7 +234,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     loss_function = FocalLoss(
         to_onehot_y= True,
         use_softmax=True,
-        gamma=2.0
+        gamma=2.0,
+        class_weight=class_weights
     )
 
     scaler = GradScaler()
