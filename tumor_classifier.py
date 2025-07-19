@@ -151,7 +151,7 @@ class QADataset(Dataset):
         subtype = subtype.strip()
 
         label_idx = self.tumor_to_idx[subtype]
-        image = np.load(os.path.join(self.data_dir, f'{case_id}_img.npy'))
+        image = np.load(os.path.join(self.preprocessed_dir, f'{case_id}_img.npy'))
 
         image_tensor = torch.from_numpy(image).float().unsqueeze(0)
 
