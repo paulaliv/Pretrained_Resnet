@@ -608,17 +608,6 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
     plt.savefig(os.path.join(plot_dir, 'MMD_diag_vs_offdiag.png'))
     plt.close()
 
-# def load_pretrained_weights(model, checkpoint_path):
-#     checkpoint = torch.load(checkpoint_path)
-#     model_dict = model.state_dict()
-#
-#     # Filter out unnecessary keys
-#     pretrained_dict = {k: v for k, v in checkpoint['state_dict'].items() if k in model_dict and v.size() == model_dict[k].size()}
-#     model_dict.update(pretrained_dict)
-#     model.load_state_dict(model_dict, strict=False)
-#
-#     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
-#     return model
 
 def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
     for fold in range(1):
@@ -707,7 +696,7 @@ def extract_features(train_dir, fold_paths, device, plot_dir):
         ci_test=False,
     )
     base_model, _ = generate_model(sets)
-    model = ResNetWithClassifier(base_model, in_channels=1, num_classes=5)
+    model = ResNetWithClassifier(base_model, in_channels=1, num_classes=4)
     model.load_state_dict(torch.load("best_model_fold_0.pth", map_location=device))
     model.to(device)
     model.eval()
@@ -800,6 +789,6 @@ if __name__ == '__main__':
     pretrain = sys.argv[3]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #main(preprocessed, plot_dir, fold_paths, pretrain, device )
-    extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
+    main(preprocessed, plot_dir, fold_paths, pretrain, device )
+    #extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
 
