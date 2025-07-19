@@ -77,7 +77,7 @@ priority_to_idx = {
 
 
 class ResNetWithClassifier(nn.Module):
-    def __init__(self, base_model, in_channels=1, num_classes=5):  # change num_classes to match your setting
+    def __init__(self, base_model, in_channels=1, num_classes=4):  # change num_classes to match your setting
         super().__init__()
         self.encoder = base_model
         # if base_model_path:
@@ -93,7 +93,7 @@ class ResNetWithClassifier(nn.Module):
             nn.Linear(512, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(128,num_classes)
+            nn.Linear(128,num_)
         )
 
     def forward(self, x):
