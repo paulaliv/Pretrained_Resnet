@@ -247,15 +247,6 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         44
     ], dtype=torch.float)
 
-    class_weights = 1.0 / class_counts
-    #class_weights = class_weights / class_weights.sum()
-
-    # loss_function = FocalLoss(
-    #     to_onehot_y= True,
-    #     use_softmax=True,
-    #     gamma=2.0,
-    #     class_weight=class_weights
-    # )
 
     criterion = coral_loss_manual
 
@@ -677,7 +668,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
         base_model.load_state_dict(pretrained_dict,strict=False)
 
 
-        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=5)
+        model = ResNetWithClassifier(base_model, in_channels =1, num_thresholds=3)
         for param in model.encoder.parameters():
             param.requires_grad = True
         model.to(device)
