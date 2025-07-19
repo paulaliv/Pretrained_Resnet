@@ -391,7 +391,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 zero_division=0
             )
 
-            cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
+            cm = confusion_matrix(val_true_priority,val_pred_priority, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
