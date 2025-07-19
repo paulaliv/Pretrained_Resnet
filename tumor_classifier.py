@@ -212,11 +212,20 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, pin_memory=True, num_workers=4)
 
+    tumor_to_idx = {
+        "MyxofibroSarcomas": 0,
+        "LeiomyoSarcomas": 1,
+        "DTF": 2,
+        "MyxoidlipoSarcoma": 3,
+        "WDLPS": 4
+
+    }
     class_counts = torch.tensor([
         46,  # MyxofibroSarcomas (idx 0)
         24,  # LeiomyoSarcomas    (idx 1)
         54,  # DTF                (idx 2)
-        72,  # LipoSarcoma  (idx 3)
+        28,  # LipoSarcoma  (idx 3)
+        44
     ], dtype=torch.float)
 
     class_weights = 1.0 / class_counts
