@@ -77,7 +77,7 @@ priority_to_idx = {
 
 
 class ResNetWithClassifier(nn.Module):
-    def __init__(self, base_model, in_channels=1, num_classes=4):  # change num_classes to match your setting
+    def __init__(self, base_model, in_channels=1, num_thresholds=3):  # change num_classes to match your setting
         super().__init__()
         self.encoder = base_model
         # if base_model_path:
@@ -93,7 +93,7 @@ class ResNetWithClassifier(nn.Module):
             nn.Linear(512, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(128,num_)
+            nn.Linear(128,num_thresholds)
         )
 
     def forward(self, x):
@@ -133,13 +133,9 @@ class QADataset(Dataset):
 
         self.transform = transform
 
-        self.tumor_to_idx = tumor_to_idx
-#         tumor_to_idx = {
-    #     "MyxofibroSarcomas": 0,
-    #     "LeiomyoSarcomas": 1,
-    #     "DTF": 2,
-    #     "LipoSarcoma": 3,
-# }
+        self.priority_mapping = priority_mapping
+        self.priority_to_idx = priority_to_idx
+
 
     def __len__(self):
         return len(self.case_ids)
@@ -150,7 +146,8 @@ class QADataset(Dataset):
         subtype = self.subtypes[idx]
         subtype = subtype.strip()
 
-        label_idx = self.tumor_to_idx[subtype]
+        priority = self.priority_mapping[subtype]
+        label_idx = self.priority_to_idx[priority]
         image = np.load(os.path.join(self.preprocessed_dir, f'{case_id}_img.npy'))
 
         image_tensor = torch.from_numpy(image).float().unsqueeze(0)
@@ -176,7 +173,29 @@ class QADataset(Dataset):
             'label': label_tensor,  # scalar tensor
         }
 
+def coral_loss_manual(logits, levels):
+    """
+    logits: [B, num_classes - 1]
+    levels: binary cumulative targets (e.g., [1, 1, 0])
+    """
+    log_probs = F.logsigmoid(logits)
+    log_1_minus_probs = F.logsigmoid(-logits)
 
+    loss = -levels * log_probs - (1 - levels) * log_1_minus_probs
+    return loss.mean()
+
+
+def encode_ordinal_targets(labels, num_thresholds= 3): #K-1 thresholds
+    batch_size = labels.shape[0]
+    targets = torch.zeros((batch_size, num_thresholds), dtype=torch.float32)
+    for i in range(num_thresholds):
+        targets[:,i] = (labels > i).float()
+    return targets
+
+def decode_predictions(logits):
+    probs = torch.sigmoid(logits)
+
+    return (probs > 0.5).sum(dim=1)
 
 def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, scheduler, num_epochs, patience, device,fold):
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -231,12 +250,14 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     class_weights = 1.0 / class_counts
     #class_weights = class_weights / class_weights.sum()
 
-    loss_function = FocalLoss(
-        to_onehot_y= True,
-        use_softmax=True,
-        gamma=2.0,
-        class_weight=class_weights
-    )
+    # loss_function = FocalLoss(
+    #     to_onehot_y= True,
+    #     use_softmax=True,
+    #     gamma=2.0,
+    #     class_weight=class_weights
+    # )
+
+    criterion = coral_loss_manual
 
     scaler = GradScaler()
 
@@ -244,13 +265,12 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     #print(base_params)
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
+    idx_to_priority = {v: k for k, v in self.priority_to_idx.items()}
     for epoch in range(num_epochs):
         model.train()
         print(f"Epoch {epoch+1}/{num_epochs}")
         running_loss, correct, total = 0.0, 0, 0
         preds_list, labels_list = [], []
-
-
 
         for batch_id, batch in enumerate(train_loader):
             inputs = batch['input'].to(device)
@@ -260,9 +280,14 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             optimizer.zero_grad()
             with autocast():
                 outputs = model(inputs)
-                loss = loss_function(outputs, labels)
-                preds = torch.argmax(outputs, dim=1)
+                targets = encode_ordinal_targets(labels).to(outputs.device)
+
+                loss = criterion(outputs, targets)
+
+                preds = decode_predictions(outputs)
                 preds_cpu = preds.detach().cpu()
+
+
                 labels_cpu = labels.detach().cpu()
 
             # Copy base_model weights before update
@@ -280,8 +305,6 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 preds_list.extend(preds_cpu.numpy())
                 labels_list.extend(labels_cpu.numpy())
 
-
-
         epoch_train_loss = running_loss / total
         epoch_train_acc = correct.double() / total
         print(f"Train Loss: {epoch_train_loss:.4f}, Train Acc: {epoch_train_acc:.4f}")
@@ -289,12 +312,9 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         train_losses.append(epoch_train_loss)
 
         if epoch % 5 == 0:
-            idx_to_tumor = {v: k for k, v in tumor_to_idx.items()}
-            pred_tumors = [idx_to_tumor[p] for p in preds_list]
-            true_tumors = [idx_to_tumor[t] for t in labels_list]
+            pred_tumors = [idx_to_priority[p] for p in preds_list]
+            true_tumors = [idx_to_priority[t] for t in labels_list]
             print(classification_report(true_tumors, pred_tumors, digits=4, zero_division=0))
-            # for prediction in range(len(pred_tumors)):
-            # print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
 
         del inputs, outputs,labels, preds
         torch.cuda.empty_cache()
@@ -309,14 +329,22 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 inputs = batch['input'].to(device)
                 labels = batch['label'].to(device)
                 outputs = model(inputs)
-                loss = loss_function(outputs, labels)
-                preds = torch.argmax(outputs, dim=1)
-                preds_cpu = preds.detach().cpu()
+                targets = encode_ordinal_targets(labels).to(outputs.device)
+                loss = loss_function(outputs, targets)
+                # preds = torch.argmax(outputs, dim=1)
+                # preds_cpu = preds.detach().cpu()
+
                 labels_cpu = labels.detach().cpu()
 
                 val_loss += loss.item() * inputs.size(0)
-                val_correct += torch.sum(preds == labels.data)
+
+                with torch.no_grad():
+                    decoded_preds = decode_predictions(outputs)
+                    val_correct += (decoded_preds == labels).sum().item()
+
+
                 val_total += labels.size(0)
+
                 val_preds_list.extend(preds_cpu.numpy())
                 val_labels_list.extend(labels_cpu.numpy())
 
@@ -327,9 +355,15 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
         val_losses.append(epoch_val_loss)
 
-        val_pred_tumors = [idx_to_tumor[p] for p in val_preds_list]
-        val_true_tumors = [idx_to_tumor[t] for t in val_labels_list]
+        val_pred_tumors = [idx_to_priority[p] for p in val_preds_list]
+        val_true_tumors = [idx_to_priority[t] for t in val_labels_list]
+
         print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
+
+
+        val_mae = mean_absolute_error(val_labels_list, val_preds_list)
+
+        print(f"Val MAE: {val_mae:.4f}")
 
         warmup_epochs = 10
         base_lr = 1e-3
@@ -351,7 +385,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            labels = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF","MyxoidlipoSarcoma","WDLPS"]
+            labels = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
             cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
