@@ -229,7 +229,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     ], dtype=torch.float)
 
     class_weights = 1.0 / class_counts
-    #class_weights = class_weights / class_weights.sum()
+    class_weights = class_weights / class_weights.sum()
 
     loss_function = FocalLoss(
         to_onehot_y= True,
