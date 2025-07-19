@@ -322,7 +322,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 labels = batch['label'].to(device)
                 outputs = model(inputs)
                 targets = encode_ordinal_targets(labels).to(outputs.device)
-                loss = loss_function(outputs, targets)
+                loss = criterion(outputs, targets)
                 # preds = torch.argmax(outputs, dim=1)
                 # preds_cpu = preds.detach().cpu()
 
@@ -350,7 +350,18 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         val_pred_tumors = [idx_to_priority[p] for p in val_preds_list]
         val_true_tumors = [idx_to_priority[t] for t in val_labels_list]
 
-        print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
+        label_names = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
+        label_indices = [0, 1, 2, 3]  # Match this to your model output indexing
+
+        report = classification_report(
+            val_true_tumors,
+            val_pred_tumors,
+            labels=label_indices,
+            target_names=label_names,
+            digits=4,
+            zero_division=0
+        )
+        print(report)
 
 
         val_mae = mean_absolute_error(val_labels_list, val_preds_list)
@@ -376,8 +387,19 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
-            best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
             labels = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
+            label_indices = [0, 1, 2, 3]  # Match this to your model output indexing
+
+            best_report = classification_report(
+                val_true_tumors,
+                val_pred_tumors,
+                labels=label_indices,
+                target_names=label_names,
+                digits=4,
+                zero_division=0
+            )
+
+
             cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
