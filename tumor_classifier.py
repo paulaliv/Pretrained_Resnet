@@ -664,7 +664,33 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
         plt.savefig(os.path.join(plot_dir, 'pretrain_loss_curves.png'))
 
 def extract_features(train_dir, fold_paths, device, plot_dir):
-    model = TumorClassifier(model_depth=18, in_channels=1, num_classes=4)
+    sets = Namespace(
+        model='resnet',
+        model_depth=18,
+        resnet_shortcut='A',
+        input_D=48,
+        input_H=272,
+        input_W=256,
+        n_input_channels=1,
+        n_seg_classes=5,
+        gpu_id=[0],
+        no_cuda=False,
+        phase='test',
+        pretrain_path='',  # Not needed since we load best_model.pth
+        new_layer_names=['conv_seg'],
+        manual_seed=1,
+        learning_rate=0.001,
+        batch_size=4,
+        num_workers=4,
+        resume_path='',
+        save_intervals=10,
+        n_epochs=200,
+        data_root=train_dir,
+        img_list='./data/train.txt',
+        ci_test=False,
+    )
+    base_model, _ = generate_model(sets)
+    model = ResNetWithClassifier(base_model, in_channels=1, num_classes=5)
     model.load_state_dict(torch.load("best_model_fold_0.pth", map_location=device))
     model.to(device)
     model.eval()
@@ -728,12 +754,12 @@ def extract_features(train_dir, fold_paths, device, plot_dir):
 
     plot_UMAP(X_train, y_train, neighbours=5, m='cosine', name='UMAP_cosine_5n_fold0.png', image_dir=plot_dir)
     plot_UMAP(X_train,y_train,neighbours=10, m='cosine', name='UMAP_cosine_10n_fold0.png', image_dir =plot_dir)
-    #plot_UMAP(X_train, y_train, neighbours=15, m='cosine', name='UMAP_cosine_15n_fold0.png', image_dir=plot_dir)
+    plot_UMAP(X_train, y_train, neighbours=15, m='cosine', name='UMAP_cosine_15n_fold0.png', image_dir=plot_dir)
 
 
     plot_UMAP(X_scaled, y_train, neighbours=5, m='manhattan', name='UMAP_manh_5n_fold0.png', image_dir=plot_dir)
     plot_UMAP(X_scaled,y_train,neighbours=10, m='manhattan', name='UMAP_manh_10n_fold0.png', image_dir =plot_dir)
-    #plot_UMAP(X_scaled, y_train, neighbours=15, m='manhattan', name='UMAP_manh_15n_fold0.png', image_dir=plot_dir)
+    plot_UMAP(X_scaled, y_train, neighbours=15, m='manhattan', name='UMAP_manh_15n_fold0.png', image_dir=plot_dir)
 
     maha, euc, std_maha, std_euc = intra_class_distance(X_scaled, y_train)
     plot_intra_class_distances(maha,euc, std_maha, std_euc,plot_dir)
@@ -757,6 +783,6 @@ if __name__ == '__main__':
     pretrain = sys.argv[3]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    main(preprocessed, plot_dir, fold_paths, pretrain, device )
-    #extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
+    #main(preprocessed, plot_dir, fold_paths, pretrain, device )
+    extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
 
