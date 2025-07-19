@@ -341,7 +341,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 val_labels_list.extend(labels_cpu.numpy())
 
         epoch_val_loss = val_loss / val_total
-        epoch_val_acc = val_correct.double() / val_total
+        epoch_val_acc = val_correct/ val_total
 
         print(f"Val Loss: {epoch_val_loss:.4f}, Val Acc: {epoch_val_acc:.4f}")
 
