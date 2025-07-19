@@ -233,10 +233,10 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     }
 
     class_counts = torch.tensor([
-        46,  # MyxofibroSarcomas (idx 0)
-        24,  # LeiomyoSarcomas    (idx 1)
-        54,  # DTF                (idx 2)
-        28
+        54,  # intermediate (idx 0)
+        44,  # low malignant    (idx 1)
+        74,  # moderate               (idx 2)
+        24  #high malignant
     ], dtype=torch.float)
 
     class_weights = 1.0 / class_counts
@@ -245,8 +245,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     loss_function = FocalLoss(
         to_onehot_y= True,
         use_softmax=True,
-        gamma=2.0
-        #weight=class_weights
+        gamma=2.0,
+        weight=class_weights
     )
 
     scaler = GradScaler()
@@ -255,6 +255,8 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
     #print(base_params)
     train_losses = []  # <-- add here, before the epoch loop
     val_losses = []
+
+    label_names = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
 
     idx_to_priority = {v: k for k, v in priority_to_idx.items()}
     for epoch in range(num_epochs):
@@ -305,7 +307,15 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
             pred_tumors = [idx_to_priority[p] for p in preds_list]
             true_tumors = [idx_to_priority[t] for t in labels_list]
-            print(classification_report(true_tumors, pred_tumors, digits=4, zero_division=0))
+            print(classification_report(
+                true_tumors,
+                pred_tumors,
+                labels=label_names,
+                target_names=label_names,
+                digits=4,
+                zero_division=0
+            ))
+
             # for prediction in range(len(pred_tumors)):
             # print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
 
@@ -340,9 +350,18 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
         val_losses.append(epoch_val_loss)
 
-        val_pred_tumors = [idx_to_priority[p] for p in val_preds_list]
-        val_true_tumors = [idx_to_priority[t] for t in val_labels_list]
-        print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
+        val_pred_priority = [idx_to_priority[p] for p in val_preds_list]
+        val_true_priority = [idx_to_priority[t] for t in val_labels_list]
+        report = classification_report(
+            val_true_priority,
+            val_pred_priority,
+            labels=label_names,
+            target_names=label_names,
+            digits=4,
+            zero_division=0
+        )
+        print(report)
+
 
         warmup_epochs = 10
         base_lr = 1e-3
@@ -363,8 +382,15 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
-            best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            labels = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
+            best_report = classification_report(
+                val_true_priority,
+                val_pred_priority,
+                labels=label_names,
+                target_names=label_names,
+                digits=4,
+                zero_division=0
+            )
+
             cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
@@ -653,13 +679,13 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
         for param in model.encoder.parameters():
             param.requires_grad = True
         model.to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, min_lr=1e-6)
         #criterion = nn.CrossEntropyLoss()
 
 
         best_model, train_losses, val_losses= train_one_fold(model, preprocessed_dir, plot_dir,fold_paths,optimizer, scheduler,
-                                    num_epochs=100, patience=20, device=device, fold=fold)
+                                    num_epochs=100, patience=15, device=device, fold=fold)
 
         plt.plot(train_losses, label='Train Loss')
         plt.plot(val_losses, label='Validation Loss')
