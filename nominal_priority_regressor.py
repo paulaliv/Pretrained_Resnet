@@ -350,17 +350,14 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
         assert len(val_preds_list) == len(val_labels_list), \
             f"Mismatch in lengths: preds={len(val_preds_list)}, labels={len(val_labels_list)}"
 
-        val_pred_tumors = [idx_to_priority[p] for p in val_preds_list]
-        val_true_tumors = [idx_to_priority[t] for t in val_labels_list]
+        val_pred_priority= [idx_to_priority[p] for p in val_preds_list]
+        val_true_priority = [idx_to_priority[t] for t in val_labels_list]
 
         label_names = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
-        label_indices = [0, 1, 2, 3]  # Match this to your model output indexing
 
         report = classification_report(
-            val_true_tumors,
-            val_pred_tumors,
-            labels=label_indices,
-            target_names=label_names,
+            val_true_priority,
+            val_pred_priority,
             digits=4,
             zero_division=0
         )
@@ -391,13 +388,10 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             labels = ['intermediate', 'low_malignant', 'moderate_malignant', 'high_malignant']
-            label_indices = [0, 1, 2, 3]  # Match this to your model output indexing
 
             best_report = classification_report(
-                val_true_tumors,
-                val_pred_tumors,
-                labels=label_indices,
-                target_names=label_names,
+                val_true_priority,
+                val_pred_priority,
                 digits=4,
                 zero_division=0
             )
