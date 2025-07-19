@@ -391,7 +391,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 zero_division=0
             )
 
-            cm = confusion_matrix(val_true_priority,val_pred_priority, labels = labels)
+            cm = confusion_matrix(val_true_priority,val_pred_priority, labels = labels_cpu)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
@@ -405,7 +405,7 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
                 model.load_state_dict(best_model_wts)
 
                 plt.figure(figsize=(8, 6))  # Increase figure size
-                sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=labels, yticklabels=labels)
+                sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=labels_cpu, yticklabels=labels_cpu)
                 plt.title("Confusion Matrix - Fold 0", fontsize=14)
                 plt.xlabel("Predicted Label", fontsize=12)
                 plt.ylabel("True Label", fontsize=12)
