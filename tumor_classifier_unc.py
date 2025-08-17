@@ -30,7 +30,7 @@ from monai.networks.nets import DenseNet121, DenseNet169
 from monai.networks.nets import ResNet
 from monai.transforms import (
     Compose, LoadImaged, EnsureChannelFirstd, RandFlipd, RandRotate90d, RandGaussianNoised, NormalizeIntensityd,
-    ToTensord
+    ToTensord, EnsureTyped
 )
 
 
