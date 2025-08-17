@@ -103,9 +103,9 @@ class ResNetWithClassifier(nn.Module):
 
     def forward(self, img, unc):
         x = self.encoder(img)
-        print(x.shape)
+
         x1 = self.encoder_unc(unc)
-        print(x1.shape)
+
         x1 = torch.flatten(x1, start_dim=1)  # flatten to [B, 128]
 
         merged = torch.cat((x, x1), dim=1)
@@ -221,7 +221,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         transform=val_transforms
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, pin_memory=True, num_workers=4)
 
     tumor_to_idx = {
