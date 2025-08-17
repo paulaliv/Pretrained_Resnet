@@ -92,7 +92,7 @@ class ResNetWithClassifier(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(612, 256),
+            nn.Linear(512, 256),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(256, 128),
@@ -103,7 +103,9 @@ class ResNetWithClassifier(nn.Module):
 
     def forward(self, img, unc):
         x = self.encoder(img)
+        print(x.shape)
         x1 = self.encoder_unc(unc)
+        print(x1.shape)
         x1 = torch.flatten(x1, start_dim=1)  # flatten to [B, 128]
 
         merged = torch.cat((x, x1), dim=1)
