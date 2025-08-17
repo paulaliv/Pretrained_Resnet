@@ -82,7 +82,7 @@ class ResNetWithClassifier(nn.Module):
             nn.Conv3d(32, 64, 3, padding=1), nn.BatchNorm3d(64), nn.ReLU(),
             nn.MaxPool3d(2),  # <- NEW BLOCK
             nn.Conv3d(64, 128, 3, padding=1), nn.BatchNorm3d(128), nn.ReLU(),
-            nn.AdaptiveAvgPool3d((1, 1, 1))  # outputs [B, 64, 1, 1, 1]
+            nn.AdaptiveAvgPool3d((1)  # outputs [B, 64, 1, 1, 1]
             # nn.AdaptiveAvgPool3d(1),
         )
 
@@ -104,6 +104,8 @@ class ResNetWithClassifier(nn.Module):
     def forward(self, img, unc):
         x = self.encoder(img)
         x1 = self.encoder_unc(unc)
+        x1 = torch.flatten(x1, start_dim=1)  # flatten to [B, 128]
+
         merged = torch.cat((x, x1), dim=1)
 
 
