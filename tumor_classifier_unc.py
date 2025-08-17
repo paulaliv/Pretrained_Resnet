@@ -630,7 +630,7 @@ def return_splits(dir, df):
     from sklearn.model_selection import train_test_split
 
     # get list of available cases
-    available_cases = [f.split("_pred.npy")[0] for f in os.listdir(dir) if f.endswith("_pred.npy")]
+    available_cases = [f.split("_epkl.npy")[0] for f in os.listdir(dir) if f.endswith("_epkl.npy")]
 
     # filter df
     df_filtered = df[df['case_id'].isin(available_cases)].reset_index(drop=True)
