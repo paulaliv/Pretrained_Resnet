@@ -115,7 +115,7 @@ class ResNetWithClassifier(nn.Module):
         return x.view(x.size(0), -1) #sahpe (B,512)
 
 class QADataset(Dataset):
-    def __init__(self, case_ids, preprocessed_dir, df, unc_metric,transform=None):
+    def __init__(self, case_ids, preprocessed_dir, img_dir,df, unc_metric,transform=None):
         """
         fold: str, e.g. 'fold_0'
         preprocessed_dir: base preprocessed path with .npz images
@@ -123,6 +123,7 @@ class QADataset(Dataset):
         fold_paths: dict with fold folder paths containing Dice scores & case IDs
         """
         self.preprocessed_dir = preprocessed_dir
+        self.img_dir = img_dir
         self.uncertainty_metric = unc_metric
 
         # Load Dice scores & case IDs from a CSV or JSON
@@ -160,7 +161,7 @@ class QADataset(Dataset):
 
         label_idx = self.tumor_to_idx[subtype]
 
-        image = np.load(os.path.join(self.preprocessed_dir, f'{case_id}_img.npy'))
+        image = np.load(os.path.join(self.img_dir, f'{case_id}_img.npy'))
 
         uncertainty = np.load(os.path.join(self.preprocessed_dir_dir, f'{case_id}_{self.uncertainty_metric}.npy'))
 
@@ -185,7 +186,7 @@ class QADataset(Dataset):
 
 
 
-def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device):
+def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device):
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = float('inf')
     patience_counter = 0
@@ -200,6 +201,7 @@ def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, uncertainty_
     train_dataset = QADataset(
         case_ids=train_case_ids,
         preprocessed_dir=preprocessed_dir,
+        img_dir=img_dir,
         df=df,
         unc_metric = uncertainty_metric,
         transform=train_transforms
@@ -209,6 +211,7 @@ def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, uncertainty_
     val_dataset = QADataset(
         case_ids=val_case_ids,
         preprocessed_dir=preprocessed_dir,
+        img_dir=img_dir,
         df=df,
         unc_metric = uncertainty_metric,
         transform=val_transforms
@@ -623,7 +626,7 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 #     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
 #     return model
 
-def main(preprocessed_dir, plot_dir, folds, pretrain, df, device):
+def main(preprocessed_dir, img_dir, plot_dir, folds, pretrain, df, device):
     print('Training RESNET on image and then seperate unc encoder!!')
     print('TEST')
     metric = 'entropy'
@@ -675,7 +678,7 @@ def main(preprocessed_dir, plot_dir, folds, pretrain, df, device):
         #criterion = nn.CrossEntropyLoss()
 
 
-        best_model, train_losses, val_losses= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
+        best_model, train_losses, val_losses= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, img_dir=img_dir,plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
                                     num_epochs=100, patience=20, device=device)
 
         plt.plot(train_losses, label='Train Loss')
@@ -800,10 +803,11 @@ if __name__ == '__main__':
     df = pd.read_csv(clinical_data)
 
     preprocessed= sys.argv[1]
-    plot_dir = sys.argv[2]
-    pretrain = sys.argv[3]
+    img_dir = sys.argv[2]
+    plot_dir = sys.argv[3]
+    pretrain = sys.argv[4]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    main(preprocessed, plot_dir, splits, pretrain, df, device )
+    main(preprocessed, img_dir,plot_dir, splits, pretrain, df, device )
     #extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
 
