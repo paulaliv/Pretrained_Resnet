@@ -45,8 +45,8 @@ train_transforms = Compose([
     ToTensord(keys=["image", "uncertainty"])
 ])
 val_transforms = Compose([
-    EnsureTyped(keys=["mask", "uncertainty"], dtype=torch.float32),
-    ToTensord(keys=["mask", "uncertainty"])
+    EnsureTyped(keys=["image", "uncertainty"], dtype=torch.float32),
+    ToTensord(keys=["image", "uncertainty"])
 ])
 
 
