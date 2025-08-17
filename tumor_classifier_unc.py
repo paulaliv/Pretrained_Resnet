@@ -179,7 +179,7 @@ class QADataset(Dataset):
         # print('Label tensor shape : ', label_tensor.shape)
 
         return {
-            'input': image,
+            'image': image,
             'uncertainty': uncertainty,                            # shape (C_total, D, H, W)
             'label': label_tensor,  # scalar tensor
         }
@@ -323,7 +323,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
         with torch.no_grad():
             for batch in val_loader:
-                image = batch['input'].to(device)
+                image = batch['image'].to(device)
                 uncertainty = batch['uncertainty'].to(device)
 
                 labels = batch['label'].to(device)
