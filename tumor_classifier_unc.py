@@ -32,21 +32,23 @@ from monai.transforms import (
     Compose, LoadImaged, EnsureChannelFirstd, RandFlipd, RandRotate90d, RandGaussianNoised, NormalizeIntensityd,
     ToTensord
 )
+
+
 train_transforms = Compose([
-    # Don't use LoadImaged since data is already loaded
-    EnsureChannelFirstd(keys=["image"],channel_dim=0),
-    NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-    RandFlipd(keys=["image"], prob=0.5, spatial_axis=0),
-    RandRotate90d(keys=["image"], prob=0.5, max_k=3),
-    RandGaussianNoised(keys="image", prob=0.2),
-    ToTensord(keys=["image"]),
+    RandRotate90d(keys=["image", "uncertainty"], prob=0.5, max_k=3, spatial_axes=(1, 2)),
+
+    RandFlipd(keys=["image", "uncertainty"], prob=0.5, spatial_axis=0),
+    RandFlipd(keys=["image", "uncertainty"], prob=0.5, spatial_axis=1),  # flip along height axis
+    RandFlipd(keys=["image", "uncertainty"], prob=0.5, spatial_axis=2),
+    EnsureTyped(keys=["image", "uncertainty"], dtype=torch.float32),
+    ToTensord(keys=["image", "uncertainty"])
+])
+val_transforms = Compose([
+    EnsureTyped(keys=["mask", "uncertainty"], dtype=torch.float32),
+    ToTensord(keys=["mask", "uncertainty"])
 ])
 
-val_transforms = Compose([
-    EnsureChannelFirstd(keys=['image'],channel_dim=0),
-    NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-    ToTensord(keys=['image'])
-])
+
 
 
 
@@ -89,7 +91,10 @@ class ResNetWithClassifier(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(612, 128),
+            nn.Linear(612, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(128,num_classes)
@@ -109,32 +114,30 @@ class ResNetWithClassifier(nn.Module):
         return x.view(x.size(0), -1) #sahpe (B,512)
 
 class QADataset(Dataset):
-    def __init__(self, fold, preprocessed_dir, fold_paths, transform=None):
+    def __init__(self, case_ids, preprocessed_dir, df, unc_metric,transform=None):
         """
         fold: str, e.g. 'fold_0'
         preprocessed_dir: base preprocessed path with .npz images
         pred_fold_paths: dict with predicted mask folder paths per fold
         fold_paths: dict with fold folder paths containing Dice scores & case IDs
         """
-        self.fold = fold
         self.preprocessed_dir = preprocessed_dir
-        self.fold_dir = fold_paths[fold]
-
+        self.uncertainty_metric = unc_metric
 
         # Load Dice scores & case IDs from a CSV or JSON
         # Example CSV: case_id,dice
 
-        self.metadata = pd.read_csv(self.fold_dir)
+        self.df = df
 
         # List of case_ids
-        self.case_ids = self.metadata['case_id'].tolist()
+        self.case_ids = case_ids
+        self.df = df.set_index('case_id').loc[self.case_ids].reset_index()
+
         #self.dice_scores = self.metadata['dice'].tolist()
-        self.subtypes = self.metadata['subtype'].tolist()
+        self.subtypes = self.df['subtype'].tolist()
         #self.ds = nnUNetDatasetBlosc2(self.preprocessed_dir)
 
         self.transform = transform
-        self.priority_mapping = priority_mapping
-        self.priority_to_idx = priority_to_idx
 
         self.tumor_to_idx = tumor_to_idx
 #         tumor_to_idx = {
@@ -158,59 +161,55 @@ class QADataset(Dataset):
 
         image = np.load(os.path.join(self.preprocessed_dir, f'{case_id}_img.npy'))
 
-        image_tensor = torch.from_numpy(image).float().unsqueeze(0)
+        uncertainty = np.load(os.path.join(self.preprocessed_dir_dir, f'{case_id}_{self.uncertainty_metric}.npy'))
 
-
-        data_dict = {'image': image_tensor }
-        # nnU-Net raw images usually have multiple channels; choose accordingly:
-        # Here, just take channel 0 for simplicity:
-        #input_image = np.stack([image[0], pred_mask], axis=0)  # (2, H, W, D)
-        # Map dice score to category
-        if self.transform:
-            data_dict = self.transform(data_dict)
-
-        image_tensor = data_dict['image']
         label_tensor = torch.tensor(label_idx).long()
+        if self.transform:
+            data = self.transform({
+                "img": np.expand_dims(image, 0),
+                "uncertainty":np.expand_dims(uncertainty, 0),
+            })
+            image= data["mask"].float()
+            uncertainty = data["uncertainty"].float()
 
 
         # print('Image tensor shape : ', image_tensor.shape)
         # print('Label tensor shape : ', label_tensor.shape)
 
         return {
-            'input': image_tensor,  # shape (C_total, D, H, W)
+            'input': image_tensor,
+            'uncertainty': uncertainty,                            # shape (C_total, D, H, W)
             'label': label_tensor,  # scalar tensor
         }
 
 
 
-def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, scheduler, num_epochs, patience, device,fold):
+def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device):
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = float('inf')
     patience_counter = 0
 
     print(f"Training fold {fold} ...")
 
-    # Initialize datasets for this fold
-    train_fold_ids = [f"fold_{i}" for i in range(5) if i != fold]  # other folds for training
-    val_fold_id = f"fold_{fold}"  # current fold for validation
 
-    # Combine training folds datasets
-    train_datasets = []
-    for train_fold in train_fold_ids:
-        ds = QADataset(
-            fold=train_fold,
-            preprocessed_dir=preprocessed_dir,
-            fold_paths=fold_paths,
-            transform=train_transforms
-        )
-        train_datasets.append(ds)
-    train_dataset = ConcatDataset(train_datasets)
-    del train_datasets
+    train_case_ids = splits[fold]["train"]
+    val_case_ids = splits[fold]["val"]
+
+
+    train_dataset = QADataset(
+        fold=train_case_ids,
+        preprocessed_dir=preprocessed_dir,
+        df=df,
+        uncertainty_metric = uncertainty_metric,
+        transform=train_transforms
+    )
+
 
     val_dataset = QADataset(
-        fold=val_fold_id,
+        fold=val_case_ids,
         preprocessed_dir=preprocessed_dir,
-        fold_paths=fold_paths,
+        df=df,
+        uncertainty_metric = uncertainty_metric,
         transform=val_transforms
     )
 
@@ -265,13 +264,15 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
 
         for batch_id, batch in enumerate(train_loader):
-            inputs = batch['input'].to(device)
+            image = batch['image'].to(device)
+            uncertainty = batch['uncertainty'].to(device)
+
             labels = batch['label'].to(device)
             #print("Input shape:", inputs.shape)
 
             optimizer.zero_grad()
             with autocast():
-                outputs = model(inputs)
+                outputs = model(image, uncertainty)
                 loss = loss_function(outputs, labels)
                 preds = torch.argmax(outputs, dim=1)
                 preds_cpu = preds.detach().cpu()
@@ -318,9 +319,11 @@ def train_one_fold(model, preprocessed_dir, plot_dir, fold_paths, optimizer, sch
 
         with torch.no_grad():
             for batch in val_loader:
-                inputs = batch['input'].to(device)
+                image = batch['input'].to(device)
+                uncertainty = batch['uncertainty'].to(device)
+
                 labels = batch['label'].to(device)
-                outputs = model(inputs)
+                outputs = model(image, uncertainty)
                 loss = loss_function(outputs, labels)
                 preds = torch.argmax(outputs, dim=1)
                 preds_cpu = preds.detach().cpu()
@@ -619,8 +622,9 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 #     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
 #     return model
 
-def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
-    for fold in range(1):
+def main(preprocessed_dir, plot_dir, folds, pretrain, df, device):
+    metric = 'entropy'
+    for fold in range(5):
         #Loading MedicalNet model and weights
 
         weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
@@ -668,8 +672,8 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
         #criterion = nn.CrossEntropyLoss()
 
 
-        best_model, train_losses, val_losses= train_one_fold(model, preprocessed_dir, plot_dir,fold_paths,optimizer, scheduler,
-                                    num_epochs=100, patience=20, device=device, fold=fold)
+        best_model, train_losses, val_losses= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
+                                    num_epochs=100, patience=20, device=device)
 
         plt.plot(train_losses, label='Train Loss')
         plt.plot(val_losses, label='Validation Loss')
@@ -787,18 +791,16 @@ def extract_features(train_dir, fold_paths, device, plot_dir):
 
 
 if __name__ == '__main__':
-    fold_paths = {
-        'fold_0': '/gpfs/home6/palfken/masters_thesis/fold_0',
-        'fold_1': '/gpfs/home6/palfken/masters_thesis/fold_1',
-        'fold_2': '/gpfs/home6/palfken/masters_thesis/fold_2',
-        'fold_3': '/gpfs/home6/palfken/masters_thesis/fold_3',
-        'fold_4': '/gpfs/home6/palfken/masters_thesis/fold_4',
-    }
+    with open('/gpfs/home6/palfken/masters_thesis/Final_splits30.json', 'r') as f:
+        splits = json.load(f)
+    clinical_data = "/gpfs/home6/palfken/masters_thesis/Final_dice_dist1.csv"
+    df = pd.read_csv(clinical_data)
+
     preprocessed= sys.argv[1]
     plot_dir = sys.argv[2]
     pretrain = sys.argv[3]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #main(preprocessed, plot_dir, fold_paths, pretrain, device )
-    extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
+    main(preprocessed, plot_dir, splits, pretrain, df, device )
+    #extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
 
