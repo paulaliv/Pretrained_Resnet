@@ -163,7 +163,7 @@ class QADataset(Dataset):
 
         image = np.load(os.path.join(self.img_dir, f'{case_id}_img.npy'))
 
-        uncertainty = np.load(os.path.join(self.preprocessed_dir_dir, f'{case_id}_{self.uncertainty_metric}.npy'))
+        uncertainty = np.load(os.path.join(self.preprocessed_dir, f'{case_id}_{self.uncertainty_metric}.npy'))
 
         label_tensor = torch.tensor(label_idx).long()
         if self.transform:
