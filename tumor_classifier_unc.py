@@ -95,10 +95,8 @@ class ResNetWithClassifier(nn.Module):
             nn.Linear(640, 256),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128,num_classes)
+
+            nn.Linear(256,num_classes)
         )
 
     def forward(self, img, unc):
@@ -232,12 +230,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         "WDLPS": 4
 
     }
-    priority_to_idx = {
-        'intermediate': 0,
-        'low_malignant': 1,
-        'moderate_malignant': 2,
-        'high_malignant': 3
-    }
+
 
     class_counts = torch.tensor([
         46,  # MyxofibroSarcomas (idx 0)
