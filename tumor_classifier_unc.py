@@ -625,10 +625,40 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 #     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
 #     return model
 
-def main(preprocessed_dir, img_dir, plot_dir, folds, pretrain, df, device):
+def return_splits(dir, df):
+    from sklearn.model_selection import train_test_split
+
+    # get list of available cases
+    available_cases = [f.split("_pred.npy")[0] for f in os.listdir(dir) if f.endswith("_pred.npy")]
+
+    # filter df
+    df_filtered = df[df['case_id'].isin(available_cases)].reset_index(drop=True)
+
+    # --- Stratified K-Folds ---
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    splits = {}
+
+    for fold, (train_idx, val_idx) in enumerate(skf.split(df_filtered, df_filtered['tumor_class'])):
+        splits[fold] = {
+            "train": df_filtered.loc[train_idx, "case_id"].tolist(),
+            "val": df_filtered.loc[val_idx, "case_id"].tolist()
+        }
+
+    # --- Save splits ---
+    import json
+    with open("/gpfs/home6/palfken/masters_thesis/splits_classifier.json", "w") as f:
+        json.dump(splits, f, indent=4)
+
+    print("Splits file saved as splits.json")
+
+
+
+def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
     print('Training RESNET on image and then seperate unc encoder!!')
     print('TEST')
     metric = 'entropy'
+
+
     for fold in range(5):
         #Loading MedicalNet model and weights
 
@@ -796,8 +826,7 @@ def extract_features(train_dir, fold_paths, device, plot_dir):
 
 
 if __name__ == '__main__':
-    with open('/gpfs/home6/palfken/masters_thesis/Final_splits30.json', 'r') as f:
-        splits = json.load(f)
+
     clinical_data = "/gpfs/home6/palfken/masters_thesis/Final_dice_dist1.csv"
     df = pd.read_csv(clinical_data)
 
@@ -806,7 +835,13 @@ if __name__ == '__main__':
     plot_dir = sys.argv[3]
     pretrain = sys.argv[4]
 
+    return_splits(preprocessed,df)
+    with open('/gpfs/home6/palfken/masters_thesis/splits_classifier.json', 'r') as f:
+        splits = json.load(f)
+
+
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    main(preprocessed, img_dir,plot_dir, splits, pretrain, df, device )
+    main(preprocessed, img_dir,plot_dir, splits, pretrain, df, device)
     #extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
 
