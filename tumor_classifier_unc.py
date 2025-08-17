@@ -636,7 +636,7 @@ def return_splits(dir, df):
     df_filtered = df[df['case_id'].isin(available_cases)].reset_index(drop=True)
 
     # --- Stratified K-Folds ---
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     splits = {}
 
     for fold, (train_idx, val_idx) in enumerate(skf.split(df_filtered, df_filtered['tumor_class'])):
