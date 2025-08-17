@@ -293,7 +293,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             scaler.update()
 
 
-            running_loss += loss.item() * inputs.size(0)
+            running_loss += loss.item() * image.size(0)
             correct += torch.sum(preds == labels.data)
             total += labels.size(0)
 
@@ -317,7 +317,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             # for prediction in range(len(pred_tumors)):
             # print(f'Prediction: {pred_tumors[prediction], preds_list[prediction]} --> True Label: {true_tumors[prediction], labels_list[prediction]}')
 
-        del inputs, outputs,labels, preds
+        del image,uncertainty, outputs,labels, preds
         torch.cuda.empty_cache()
 
         # --- Validation phase ---
@@ -337,7 +337,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                 preds_cpu = preds.detach().cpu()
                 labels_cpu = labels.detach().cpu()
 
-                val_loss += loss.item() * inputs.size(0)
+                val_loss += loss.item() * image.size(0)
                 val_correct += torch.sum(preds == labels.data)
                 val_total += labels.size(0)
                 val_preds_list.extend(preds_cpu.numpy())
