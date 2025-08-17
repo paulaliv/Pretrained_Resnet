@@ -37,7 +37,6 @@ from monai.transforms import (
 
 train_transforms = Compose([
     RandRotate90d(keys=["image", "uncertainty"], prob=0.5, max_k=3, spatial_axes=(1, 2)),
-
     RandFlipd(keys=["image", "uncertainty"], prob=0.5, spatial_axis=0),
     RandFlipd(keys=["image", "uncertainty"], prob=0.5, spatial_axis=1),  # flip along height axis
     RandFlipd(keys=["image", "uncertainty"], prob=0.5, spatial_axis=2),
@@ -168,10 +167,10 @@ class QADataset(Dataset):
         label_tensor = torch.tensor(label_idx).long()
         if self.transform:
             data = self.transform({
-                "img": np.expand_dims(image, 0),
+                "image": np.expand_dims(image, 0),
                 "uncertainty":np.expand_dims(uncertainty, 0),
             })
-            image= data["mask"].float()
+            image= data["image"].float()
             uncertainty = data["uncertainty"].float()
 
 
@@ -179,7 +178,7 @@ class QADataset(Dataset):
         # print('Label tensor shape : ', label_tensor.shape)
 
         return {
-            'input': image_tensor,
+            'input': image,
             'uncertainty': uncertainty,                            # shape (C_total, D, H, W)
             'label': label_tensor,  # scalar tensor
         }
