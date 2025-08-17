@@ -624,6 +624,7 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 
 def main(preprocessed_dir, plot_dir, folds, pretrain, df, device):
     print('Training RESNET on image and then seperate unc encoder!!')
+    print('TEST')
     metric = 'entropy'
     for fold in range(5):
         #Loading MedicalNet model and weights
