@@ -135,7 +135,7 @@ class QADataset(Dataset):
         self.df = df.set_index('case_id').loc[self.case_ids].reset_index()
 
         #self.dice_scores = self.metadata['dice'].tolist()
-        self.subtypes = self.df['subtype'].tolist()
+        self.subtypes = self.df['tumor_class'].tolist()
         #self.ds = nnUNetDatasetBlosc2(self.preprocessed_dir)
 
         self.transform = transform
