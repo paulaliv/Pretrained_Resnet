@@ -92,7 +92,7 @@ class ResNetWithClassifier(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(512, 256),
+            nn.Linear(640, 256),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(256, 128),
