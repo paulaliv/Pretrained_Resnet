@@ -198,19 +198,19 @@ def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, uncertainty_
 
 
     train_dataset = QADataset(
-        fold=train_case_ids,
+        case_ids=train_case_ids,
         preprocessed_dir=preprocessed_dir,
         df=df,
-        uncertainty_metric = uncertainty_metric,
+        unc_metric = uncertainty_metric,
         transform=train_transforms
     )
 
 
     val_dataset = QADataset(
-        fold=val_case_ids,
+        case_ids=val_case_ids,
         preprocessed_dir=preprocessed_dir,
         df=df,
-        uncertainty_metric = uncertainty_metric,
+        unc_metric = uncertainty_metric,
         transform=val_transforms
     )
 
