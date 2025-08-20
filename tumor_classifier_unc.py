@@ -230,7 +230,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
     }
 
     loss_function = FocalLoss(
-        to_onehot_y= True,
+        to_onehot_y= False,
         use_softmax=True,
         gamma=gamma,
         weight=class_weights,
