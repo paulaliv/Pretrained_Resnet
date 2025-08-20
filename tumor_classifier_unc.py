@@ -240,7 +240,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
     #     include_background=False,
     # )
 
-    loss_function = CrossEntropyLoss(weight=class_weights)
+    loss_function = nn.CrossEntropyLoss(weight=class_weights)
     scaler = GradScaler()
 
     warmup_epochs = warm_up
