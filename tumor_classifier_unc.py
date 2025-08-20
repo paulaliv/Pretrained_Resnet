@@ -348,7 +348,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
         val_pred_tumors = [idx_to_tumor[p] for p in val_preds_list]
         val_true_tumors = [idx_to_tumor[t] for t in val_labels_list]
-        print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
+
+        report =classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
+        print(report)
         epoch_f1 = report["weighted avg"]["f1-score"]
         print(f"Epoch F1: {epoch_f1:.4f}")
 
