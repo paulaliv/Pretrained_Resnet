@@ -18,6 +18,7 @@ from torch.cuda.amp import GradScaler, autocast
 import matplotlib.pyplot as plt
 import umap
 from sklearn.metrics.pairwise import rbf_kernel
+import gzip
 from monai.data import Dataset, DataLoader
 from scipy.spatial import distance
 import seaborn as sns
@@ -379,7 +380,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val F1 {epoch_f1:.4f}")
 
-            torch.save(best_model_wts, f"best_model_fold_{fold}.pth")
+            with gzip.open(f"pretrain_fold{fold}_{uncertainty_metric}.pt.gz", 'wb') as f:
+                torch.save(model.state_dict(), f, pickle_protocol=4)
+
 
         label_names = ["LeiomyoSarcomas", "DTF", "WDLPS", "MyxoidlipoSarcoma"]
         if epoch_val_loss < best_loss:

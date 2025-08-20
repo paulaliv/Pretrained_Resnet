@@ -13,6 +13,7 @@ import torch.optim as optim
 import numpy as np
 import pandas as pd
 import sys
+import gzip
 import json
 import os
 from torch.cuda.amp import GradScaler, autocast
@@ -321,8 +322,9 @@ def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, df, optimize
             cm = confusion_matrix(val_true_tumors, val_pred_tumors, labels=labels_order)
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val F1 {epoch_f1:.4f}")
+            with gzip.open(f"baseline_fold_{fold}.pt.gz", 'wb') as f:
+                torch.save(model.state_dict(), f, pickle_protocol=4)
 
-            torch.save(best_model_wts, f"best_model_fold_{fold}_baseline.pth")
 
         label_names = ["LeiomyoSarcomas", "DTF", "WDLPS", "MyxoidlipoSarcoma"]
         if epoch_val_loss < best_loss:
