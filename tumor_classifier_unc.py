@@ -399,7 +399,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                 model.load_state_dict(best_model_wts)
 
                 plt.figure(figsize=(8, 6))  # Increase figure size
-                sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=label_names, yticklabels=label_names)
+                sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=label_names, yticklabels=label_names)
                 plt.title("Confusion Matrix - Fold 0", fontsize=14)
                 plt.xlabel("Predicted Label", fontsize=12)
                 plt.ylabel("True Label", fontsize=12)
