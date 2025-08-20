@@ -585,7 +585,7 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 #     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
 #     return model
 
-def main(preprocessed_dir, plot_dir, folds, pretrain, device):
+def main(preprocessed_dir, plot_dir, folds, df, pretrain, device):
 
     param_grid = {
         'lr': [1e-3, 3e-4, 1e-4],
@@ -882,4 +882,4 @@ if __name__ == '__main__':
     splits = {int(k): v for k, v in splits.items()}
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    main(preprocessed,plot_dir, splits, pretrain, df, device)
+    main(preprocessed,plot_dir, splits, df, pretrain, device)
