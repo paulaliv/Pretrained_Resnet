@@ -185,7 +185,7 @@ class QADataset(Dataset):
 
 
 
-def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up):
+def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up, gamma):
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = float('inf')
     patience_counter = 0
@@ -228,11 +228,10 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
     }
 
-
     loss_function = FocalLoss(
         to_onehot_y= True,
         use_softmax=True,
-        gamma=2.0,
+        gamma=gamma,
         weight=class_weights,
         include_background=False,
     )
@@ -684,6 +683,8 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
         'lr': [1e-3, 3e-4, 1e-4],
         'batch_size': [4, 8, 16],
         'warmup_epochs': [3, 5, 8],
+        'gamma' : [1.0, 1.5,2.0]
+
     }
 
     best_params_per_metric = {}
@@ -695,11 +696,11 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
         best_params = None
         best_score = 0
 
-        for lr, bs, warmup in product(
+        for lr, bs, warmup, gamma in product(
                         param_grid['lr'], param_grid['batch_size'],
-                        param_grid['warmup_epochs']
+                        param_grid['warmup_epochs'], param_grid['gamma']
             ):
-            print(f"Testing params: LR={lr}, BS={bs}, Warmup={warmup}")
+            print(f"Testing params: LR={lr}, BS={bs}, Warmup={warmup}, Gamma={gamma}")
 
             weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
             sets = Namespace(
@@ -747,7 +748,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
 
 
             best_model, train_losses, val_losses, preds, labels, f_1,= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, img_dir=img_dir,plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
-                                        num_epochs=70, patience=15, device=device, batch_size=bs, warm_up=warmup)
+                                        num_epochs=70, patience=15, device=device, batch_size=bs, warm_up=warmup, gamma=gamma)
 
             if f_1 > best_score:
                 best_score = f_1
@@ -813,7 +814,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
                                                                        uncertainty_metric=metric, df=df,
                                                                        optimizer=optimizer, scheduler=scheduler,
                                                                        num_epochs=100, patience=15, device=device,
-                                                                       batch_size=best_params['batch_size'], warm_up=best_params['warmup_epochs'])
+                                                                       batch_size=best_params['batch_size'], warm_up=best_params['warmup_epochs'], gamma=best_params['gamma'])
 
             all_val_preds.append(preds)
             all_val_labels.append(labels)
