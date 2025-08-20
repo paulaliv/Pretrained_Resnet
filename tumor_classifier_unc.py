@@ -195,7 +195,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
     train_case_ids = splits[fold]["train"]
     val_case_ids = splits[fold]["val"]
-    fold_counts = torch.tensor(splits[fold]["class_weights"], dtype=torch.float).to(device)
+    class_weights = torch.tensor(splits[fold]["class_weights"], dtype=torch.float).to(device)
 
 
 
@@ -227,10 +227,6 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         "WDLPS": 2
 
     }
-
-    # total = sum(fold_counts.values())
-    # class_weights = [total / fold_counts[c] for c in sorted(fold_counts.keys())]
-    # class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
 
 
     loss_function = FocalLoss(
