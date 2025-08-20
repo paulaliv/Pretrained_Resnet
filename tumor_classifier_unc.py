@@ -56,12 +56,9 @@ val_transforms = Compose([
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 tumor_to_idx = {
-    "MyxofibroSarcomas": 0,
-    "LeiomyoSarcomas": 1,
-    "DTF": 2,
-    "MyxoidlipoSarcoma": 3,
-    "WDLPS":4
-
+    "LeiomyoSarcomas": 0,
+    "DTF": 1,
+    "WDLPS":2
 }
 
 
@@ -188,7 +185,7 @@ class QADataset(Dataset):
 
 
 
-def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device):
+def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up):
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = float('inf')
     patience_counter = 0
@@ -198,6 +195,8 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
     train_case_ids = splits[fold]["train"]
     val_case_ids = splits[fold]["val"]
+    fold_counts = torch.tensor(splits[fold]["class_weights"], dtype=torch.float).to(device)
+
 
 
     train_dataset = QADataset(
@@ -219,29 +218,20 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         transform=val_transforms
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, pin_memory=True, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
     tumor_to_idx = {
-        "MyxofibroSarcomas": 0,
-        "LeiomyoSarcomas": 1,
-        "DTF": 2,
-        "MyxoidlipoSarcoma": 3,
-        "WDLPS": 4
+        "LeiomyoSarcomas": 0,
+        "DTF": 1,
+        "WDLPS": 2
 
     }
 
+    # total = sum(fold_counts.values())
+    # class_weights = [total / fold_counts[c] for c in sorted(fold_counts.keys())]
+    # class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
 
-    class_counts = torch.tensor([
-        46,  # MyxofibroSarcomas (idx 0)
-        24,  # LeiomyoSarcomas    (idx 1)
-        54,  # DTF                (idx 2)
-        28,  # LipoSarcoma  (idx 3)
-        44
-    ], dtype=torch.float)
-
-    class_weights = 1.0 / class_counts
-    class_weights = class_weights / class_weights.sum()
 
     loss_function = FocalLoss(
         to_onehot_y= True,
@@ -251,6 +241,8 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
     )
 
     scaler = GradScaler()
+
+    warmup_epochs = warm_up
 
     base_params = list(model.encoder.parameters())
     #print(base_params)
@@ -346,22 +338,35 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         val_pred_tumors = [idx_to_tumor[p] for p in val_preds_list]
         val_true_tumors = [idx_to_tumor[t] for t in val_labels_list]
         print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
+        epoch_f1 = report["weighted avg"]["f1-score"]
+        print(f"Epoch F1: {epoch_f1:.4f}")
 
-        warmup_epochs = 10
-        base_lr = 1e-3
+        base_lr = lre
         if epoch < warmup_epochs:
             lr_scale = (epoch + 1) / warmup_epochs
             for param_group in optimizer.param_groups:
                 param_group['lr'] = base_lr * lr_scale
         else:
             scheduler.step(epoch_val_loss)
-        # if epoch > 10:
-        #     scheduler.step(epoch_val_loss)
 
         # Log current learning rate(s)
         for i, param_group in enumerate(optimizer.param_groups):
             print(f"LR after scheduler step (param group {i}): {param_group['lr']:.6f}")
 
+        # Save best model based on F1 score
+        if epoch_f1 > best_f1:
+            best_f1 = epoch_f1
+            best_preds = val_preds_list.copy()
+            best_labels = val_labels_list.copy()
+            best_model_wts = copy.deepcopy(model.state_dict())
+            best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
+
+            labels_order = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF", "MyxoidlipoSarcoma", "WDLPS"]
+            cm = confusion_matrix(val_true_tumors, val_pred_tumors, labels=labels_order)
+
+            print(f"✅ New best model saved at epoch {epoch + 1} with val F1 {epoch_f1:.4f}")
+
+            torch.save(best_model_wts, f"best_model_fold_{fold}.pth")
 
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
@@ -371,9 +376,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
-            print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
+            # print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
 
-            torch.save(best_model_wts, f"best_model_fold_{fold}.pth")
+            # torch.save(best_model_wts, f"best_model_fold_{fold}.pth")
             patience_counter = 0
         else:
             patience_counter += 1
@@ -388,9 +393,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                 plt.ylabel("True Label", fontsize=12)
                 plt.xticks(rotation=45, ha='right')
                 plt.tight_layout()  # Ensures everything fits in the figure area
-                plt.savefig(os.path.join(plot_dir, f"Pretrain_confusion_matrix_fold_{fold}.png"))
+                plt.savefig(os.path.join(plot_dir, f"Pretrain_confusion_matrix_fold_{fold}_{uncertainty_metric}.png"))
                 plt.close()
-                file = os.path.join(plot_dir, f"Pretrain_classification_report_fold_{fold}.txt")
+                file = os.path.join(plot_dir, f"Pretrain_classification_report_fold_{fold}_{uncertainty_metric}.txt")
 
                 print('Best Report')
                 print(best_report)
@@ -402,7 +407,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
 
     #model.load_state_dict(best_model_wts)
-    return model, train_losses, val_losses
+    return model, train_losses, val_losses, best_preds, best_labels, best_f1
 
 def plot_UMAP(train, y_train, neighbours, m, name, image_dir):
     print(f'feature shape {train.shape}')
@@ -631,15 +636,36 @@ def return_splits(dir, df):
 
     # filter df
     df_filtered = df[df['case_id'].isin(available_cases)].reset_index(drop=True)
+    # remove specific tumor classes
+    df_filtered = df_filtered[~df_filtered['tumor_class'].isin(['MyxofibroSarcoma', 'MyxoidlipoSarcoma'])].reset_index(
+        drop=True)
+
 
     # --- Stratified K-Folds ---
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     splits = {}
 
     for fold, (train_idx, val_idx) in enumerate(skf.split(df_filtered, df_filtered['tumor_class'])):
+        # tumor counts in train split
+        train_counts = df_filtered.loc[train_idx, "tumor_class"].value_counts().to_dict()
+
+
+        # make weights aligned with tumor_to_idx
+        total = sum(train_counts.values())
+        weights = []
+        for tumor, idx in tumor_to_idx.items():
+            if tumor in train_counts:
+                weights.append(total / train_counts[tumor])
+            else:
+                weights.append(0.0)  # if a class doesn't appear in this fold
+
+
+
         splits[fold] = {
             "train": df_filtered.loc[train_idx, "case_id"].tolist(),
-            "val": df_filtered.loc[val_idx, "case_id"].tolist()
+            "val": df_filtered.loc[val_idx, "case_id"].tolist(),
+            "train_counts": train_counts,
+            "class_weights": weights
         }
 
     # --- Save splits ---
@@ -654,67 +680,178 @@ def return_splits(dir, df):
 def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
     print('Training RESNET on image and then seperate unc encoder!!')
     print('TEST')
-    metric = 'entropy'
+    metrics = ['entropy', 'mutual_info','epkl']
+
+    param_grid = {
+        'lr': [1e-3, 3e-4, 1e-4],
+        'batch_size': [4, 8, 16],
+        'warmup_epochs': [3, 5, 8],
+    }
+
+    best_params_per_metric = {}
+
+    for metric in metrics:
+        fold = 1
+        print(f'Tuning for metric: {metric}')
+
+        best_params = None
+        best_score = 0
+
+        for lr, bs, warmup in product(
+                        param_grid['lr'], param_grid['batch_size'],
+                        param_grid['warmup_epochs']
+            ):
+            print(f"Testing params: LR={lr}, BS={bs}, Warmup={warmup}")
+
+            weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
+            sets = Namespace(
+                model='resnet',
+                model_depth=18,
+                resnet_shortcut='A',
+                input_D=48,
+                input_H=272,
+                input_W=256,
+                n_input_channels=1,
+                n_seg_classes=5,
+                gpu_id=[0],
+                no_cuda=False,
+                phase='train',
+                pretrain_path=weights,
+                new_layer_names=['conv_seg'],
+                manual_seed=1,
+                learning_rate=0.001,
+                batch_size=4,
+                num_workers=4,
+                resume_path='',
+                save_intervals=10,
+                n_epochs=200,
+                data_root=preprocessed_dir,
+                img_list='./data/train.txt',
+                ci_test=False,
+            )
+
+            base_model, _ = generate_model(sets)
+
+            # Load pretrained weights
+            #weights = "/gpfs/home6/palfken/Pretrained_Resnet/pretrain/resnet_18.pth"
+
+            pretrained_dict = torch.load(weights)['state_dict']
+            base_model.load_state_dict(pretrained_dict,strict=False)
 
 
-    for fold in range(5):
-        #Loading MedicalNet model and weights
-
-        weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
-        sets = Namespace(
-            model='resnet',
-            model_depth=18,
-            resnet_shortcut='A',
-            input_D=48,
-            input_H=272,
-            input_W=256,
-            n_input_channels=1,
-            n_seg_classes=5,
-            gpu_id=[0],
-            no_cuda=False,
-            phase='train',
-            pretrain_path=weights,
-            new_layer_names=['conv_seg'],
-            manual_seed=1,
-            learning_rate=0.001,
-            batch_size=4,
-            num_workers=4,
-            resume_path='',
-            save_intervals=10,
-            n_epochs=200,
-            data_root=preprocessed_dir,
-            img_list='./data/train.txt',
-            ci_test=False,
-        )
-
-        base_model, _ = generate_model(sets)
-
-        # Load pretrained weights
-        #weights = "/gpfs/home6/palfken/Pretrained_Resnet/pretrain/resnet_18.pth"
-
-        pretrained_dict = torch.load(weights)['state_dict']
-        base_model.load_state_dict(pretrained_dict,strict=False)
+            model = ResNetWithClassifier(base_model, in_channels =1, num_classes=5)
+            for param in model.encoder.parameters():
+                param.requires_grad = True
+            model.to(device)
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, min_lr=1e-6)
+            #criterion = nn.CrossEntropyLoss()
 
 
-        model = ResNetWithClassifier(base_model, in_channels =1, num_classes=5)
-        for param in model.encoder.parameters():
-            param.requires_grad = True
-        model.to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, min_lr=1e-6)
-        #criterion = nn.CrossEntropyLoss()
+            best_model, train_losses, val_losses, preds, labels, f_1,= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, img_dir=img_dir,plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
+                                        num_epochs=70, patience=15, device=device, batch_size=bs, warm_up=warmup)
+
+            if f_1 > best_score:
+                best_score = f_1
+                best_params = {
+                    'lr': lr,
+                    'batch_size': bs,
+                    'warmup_epochs': warmup
+                }
+
+        print(f"Best params for {metric}: {best_params}")
+        best_params_per_metric[metric] = best_params
+
+        all_val_preds = []
+        all_val_labels = []
+        all_f1 = []
+        for fold in range(5):
+            weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
+            sets = Namespace(
+                model='resnet',
+                model_depth=18,
+                resnet_shortcut='A',
+                input_D=48,
+                input_H=272,
+                input_W=256,
+                n_input_channels=1,
+                n_seg_classes=5,
+                gpu_id=[0],
+                no_cuda=False,
+                phase='train',
+                pretrain_path=weights,
+                new_layer_names=['conv_seg'],
+                manual_seed=1,
+                learning_rate=0.001,
+                batch_size=4,
+                num_workers=4,
+                resume_path='',
+                save_intervals=10,
+                n_epochs=200,
+                data_root=preprocessed_dir,
+                img_list='./data/train.txt',
+                ci_test=False,
+            )
+
+            base_model, _ = generate_model(sets)
+
+            # Load pretrained weights
+            # weights = "/gpfs/home6/palfken/Pretrained_Resnet/pretrain/resnet_18.pth"
+
+            pretrained_dict = torch.load(weights)['state_dict']
+            base_model.load_state_dict(pretrained_dict, strict=False)
+
+            model = ResNetWithClassifier(base_model, in_channels=1, num_classes=5)
+            for param in model.encoder.parameters():
+                param.requires_grad = True
+            model.to(device)
+            optimizer = torch.optim.Adam(model.parameters(), lr=best_params['lr'])
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, min_lr=1e-6)
+            # criterion = nn.CrossEntropyLoss()
+
+            best_model, train_losses, val_losses, preds, labels, f_1 = train_one_fold(fold=fold, model=model,
+                                                                       preprocessed_dir=preprocessed_dir,
+                                                                       img_dir=img_dir, plot_dir=plot_dir, splits=folds,
+                                                                       uncertainty_metric=metric, df=df,
+                                                                       optimizer=optimizer, scheduler=scheduler,
+                                                                       num_epochs=100, patience=15, device=device,
+                                                                       batch_size=best_params['batch_size'], warm_up=best_params['warmup_epochs'])
+
+            all_val_preds.append(preds)
+            all_val_labels.append(labels)
+            all_f1.append(f_1)
+
+            plt.plot(train_losses, label='Train Loss')
+            plt.plot(val_losses, label='Validation Loss')
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            plt.legend()
+            plt.title('Loss Curves')
+            plt.savefig(os.path.join(plot_dir, f'pretrain_loss_curves_{metric}.png'))
+
+        val_preds = np.concatenate(all_val_preds, axis=0)
+        val_labels = np.concatenate(all_val_labels, axis=0)
+        f1_avg = np.mean(all_f1)
+
+        labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS"]
+
+        disp = confusion_matrix(val_labels, val_preds, labels=[0,1,2])
+
+        plt.figure(figsize=(6, 5))
+        sns.heatmap(disp, annot=True, fmt='d', cmap='Blues',
+                    xticklabels=class_names, yticklabels=class_names)
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        plt.title(f"Confusion Matrix: {metric}, (F1 averaged over folds: {f1_avg})")
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, f"best_conf_matrix_all_folds_{metric}_LATE_ALL.png"))
+        plt.close()
+
+        print(f"Finished training with {metric}: Average F1: {f1_avg}")
+        print(f"Best parameters: {best_params}")
 
 
-        best_model, train_losses, val_losses= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, img_dir=img_dir,plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
-                                    num_epochs=100, patience=20, device=device)
 
-        plt.plot(train_losses, label='Train Loss')
-        plt.plot(val_losses, label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.title('Loss Curves')
-        plt.savefig(os.path.join(plot_dir, 'pretrain_loss_curves.png'))
 
 def extract_features(train_dir, fold_paths, device, plot_dir):
     sets = Namespace(
@@ -833,11 +970,10 @@ if __name__ == '__main__':
     plot_dir = sys.argv[3]
     pretrain = sys.argv[4]
 
-    #return_splits(preprocessed,df)
+    return_splits(preprocessed,df)
     with open('/gpfs/home6/palfken/masters_thesis/splits_classifier.json', 'r') as f:
         splits = json.load(f)
     splits = {int(k): v for k, v in splits.items()}
-
 
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
