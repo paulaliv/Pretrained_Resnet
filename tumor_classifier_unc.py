@@ -195,7 +195,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
     train_case_ids = splits[fold]["train"]
     val_case_ids = splits[fold]["val"]
-    class_weights = torch.tensor(splits[fold]["class_weights"], dtype=torch.float)
+    class_weights = torch.tensor(splits[fold]["class_weights"], dtype=torch.float).to(device)
     print(f"Class weights: {class_weights}")
 
 
