@@ -229,7 +229,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         "LeiomyoSarcomas": 0,
         "DTF": 1,
         "WDLPS": 2,
-        "MyxoidlipoSarcoma":4
+        "MyxoidlipoSarcoma":3
 
     }
 

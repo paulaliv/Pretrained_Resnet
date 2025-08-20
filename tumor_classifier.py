@@ -190,7 +190,8 @@ def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, df, optimize
     tumor_to_idx = {
         "LeiomyoSarcomas": 0,
         "DTF": 1,
-        "WDLPS": 2
+        "WDLPS":2,
+        "MyxoidlipoSarcoma":3
 
     }
 
