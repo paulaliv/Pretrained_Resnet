@@ -414,8 +414,6 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                 with open(file, "w") as f:
                     f.write(f"Final Classification Report for Fold {fold}:\n")
                     f.write(best_report)
-                return model, train_losses, val_losses
-
 
     #model.load_state_dict(best_model_wts)
     return model, train_losses, val_losses, best_preds, best_labels, best_f1
