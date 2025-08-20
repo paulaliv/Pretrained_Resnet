@@ -65,7 +65,7 @@ tumor_to_idx = {
 
 
 class ResNetWithClassifier(nn.Module):
-    def __init__(self, base_model, in_channels=1, num_classes=5):  # change num_classes to match your setting
+    def __init__(self, base_model, in_channels=1, num_classes=3):  # change num_classes to match your setting
         super().__init__()
         self.encoder = base_model
         # if base_model_path:
