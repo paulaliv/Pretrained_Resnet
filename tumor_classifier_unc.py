@@ -232,14 +232,15 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
     from monai.networks.utils import one_hot
 
 
-    loss_function = FocalLoss(
-        to_onehot_y= False,
-        use_softmax=True,
-        gamma=gamma,
-        weight=class_weights,
-        include_background=False,
-    )
+    # loss_function = FocalLoss(
+    #     to_onehot_y= False,
+    #     use_softmax=True,
+    #     gamma=gamma,
+    #     weight=class_weights,
+    #     include_background=False,
+    # )
 
+    loss_function = CrossEntropyLoss(weight=class_weights)
     scaler = GradScaler()
 
     warmup_epochs = warm_up
@@ -272,9 +273,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                 print(torch.unique(labels))  # should be only 0,1,2
                 print(class_weights.shape)  # should be torch.Size([3])
 
-                labels_oh = one_hot(labels, num_classes=3)  # shape: [batch, 3]
+                #labels_oh = one_hot(labels, num_classes=3)  # shape: [batch, 3]
 
-                loss = loss_function(outputs, labels_oh)
+                loss = loss_function(outputs, labels)
                 preds = torch.argmax(outputs, dim=1)
                 preds_cpu = preds.detach().cpu()
                 labels_cpu = labels.detach().cpu()
@@ -325,9 +326,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
                 labels = batch['label'].to(device)
                 outputs = model(image, uncertainty)
-                labels_oh = one_hot(labels, num_classes=3)  # shape: [batch, 3]
+                #labels_oh = one_hot(labels, num_classes=3)  # shape: [batch, 3]
 
-                loss = loss_function(outputs, labels_oh)
+                loss = loss_function(outputs, labels)
                 preds = torch.argmax(outputs, dim=1)
                 preds_cpu = preds.detach().cpu()
                 labels_cpu = labels.detach().cpu()
@@ -697,7 +698,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
         'lr': [1e-3, 3e-4, 1e-4],
         'batch_size': [4, 8, 16],
         'warmup_epochs': [3, 5, 8],
-        'gamma' : [1.0, 1.5,2.0, 2.5]
+        'gamma' : [1.0]
 
     }
 
