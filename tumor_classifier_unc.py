@@ -229,6 +229,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
     }
 
+    from monai.networks.utils import one_hot
+
+
     loss_function = FocalLoss(
         to_onehot_y= False,
         use_softmax=True,
@@ -269,7 +272,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                 print(torch.unique(labels))  # should be only 0,1,2
                 print(class_weights.shape)  # should be torch.Size([3])
 
-                loss = loss_function(outputs, labels)
+                labels_oh = one_hot(labels, num_classes=3)  # shape: [batch, 3]
+
+                loss = loss_function(outputs, labels_oh)
                 preds = torch.argmax(outputs, dim=1)
                 preds_cpu = preds.detach().cpu()
                 labels_cpu = labels.detach().cpu()
@@ -320,7 +325,9 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
                 labels = batch['label'].to(device)
                 outputs = model(image, uncertainty)
-                loss = loss_function(outputs, labels)
+                labels_oh = one_hot(labels, num_classes=3)  # shape: [batch, 3]
+
+                loss = loss_function(outputs, labels_oh)
                 preds = torch.argmax(outputs, dim=1)
                 preds_cpu = preds.detach().cpu()
                 labels_cpu = labels.detach().cpu()
