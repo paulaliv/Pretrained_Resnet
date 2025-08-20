@@ -197,7 +197,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
     train_case_ids = splits[fold]["train"]
     val_case_ids = splits[fold]["val"]
     class_weights = torch.tensor(splits[fold]["class_weights"], dtype=torch.float).to(device)
-    print(f"Class weights: {class_weights}")
+    # print(f"Class weights: {class_weights}")
 
 
 
@@ -263,7 +263,6 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             uncertainty = batch['uncertainty'].to(device)
 
             labels = batch['label'].to(device)
-            print(torch.unique(labels))
 
             #print("Input shape:", inputs.shape)
 
@@ -350,7 +349,6 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
         print(classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0))
         report =classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0, output_dict=True)
-        print(report)
         epoch_f1 = report["weighted avg"]["f1-score"]
         print(f"Epoch F1: {epoch_f1:.4f}")
 
