@@ -233,7 +233,8 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         to_onehot_y= True,
         use_softmax=True,
         gamma=2.0,
-        weight=class_weights
+        weight=class_weights,
+        include_background=False,
     )
 
     scaler = GradScaler()
