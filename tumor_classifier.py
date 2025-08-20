@@ -93,32 +93,29 @@ class ResNetWithClassifier(nn.Module):
         return x.view(x.size(0), -1) #sahpe (B,512)
 
 class QADataset(Dataset):
-    def __init__(self, fold, preprocessed_dir, fold_paths, transform=None):
+    def __init__(self, case_ids, preprocessed_dir, df, transform=None):
         """
         fold: str, e.g. 'fold_0'
         preprocessed_dir: base preprocessed path with .npz images
         pred_fold_paths: dict with predicted mask folder paths per fold
         fold_paths: dict with fold folder paths containing Dice scores & case IDs
         """
-        self.fold = fold
         self.preprocessed_dir = preprocessed_dir
-        self.fold_dir = fold_paths[fold]
-
 
         # Load Dice scores & case IDs from a CSV or JSON
         # Example CSV: case_id,dice
 
-        self.metadata = pd.read_csv(self.fold_dir)
+        self.df = df
 
         # List of case_ids
-        self.case_ids = self.metadata['case_id'].tolist()
-        #self.dice_scores = self.metadata['dice'].tolist()
-        self.subtypes = self.metadata['subtype'].tolist()
-        #self.ds = nnUNetDatasetBlosc2(self.preprocessed_dir)
+        self.case_ids = case_ids
+        self.df = df.set_index('case_id').loc[self.case_ids].reset_index()
+
+        # self.dice_scores = self.metadata['dice'].tolist()
+        self.subtypes = self.df['tumor_class'].tolist()
+        # self.ds = nnUNetDatasetBlosc2(self.preprocessed_dir)
 
         self.transform = transform
-        self.priority_mapping = priority_mapping
-        self.priority_to_idx = priority_to_idx
 
         self.tumor_to_idx = tumor_to_idx
 
@@ -137,64 +134,51 @@ class QADataset(Dataset):
 
         image = np.load(os.path.join(self.preprocessed_dir, f'{case_id}_img.npy'))
 
-        image_tensor = torch.from_numpy(image).float().unsqueeze(0)
-
-
-        data_dict = {'image': image_tensor }
-        # nnU-Net raw images usually have multiple channels; choose accordingly:
-        # Here, just take channel 0 for simplicity:
-        #input_image = np.stack([image[0], pred_mask], axis=0)  # (2, H, W, D)
-        # Map dice score to category
         if self.transform:
-            data_dict = self.transform(data_dict)
+            data = self.transform({
+                "image": np.expand_dims(image, 0)
+            })
+            image= data["image"].float()
 
-        image_tensor = data_dict['image']
+
         label_tensor = torch.tensor(label_idx).long()
 
-
-        # print('Image tensor shape : ', image_tensor.shape)
-        # print('Label tensor shape : ', label_tensor.shape)
-
         return {
-            'input': image_tensor,  # shape (C_total, D, H, W)
+            'input': image,  # shape (C_total, D, H, W)
             'label': label_tensor,  # scalar tensor
         }
 
 
-def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up, lr):
-
-
+def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up, lr):
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = float('inf')
-    patience_counter = 0
     best_f1 = 0
+    patience_counter = 0
 
     print(f"Training fold {fold} ...")
 
-    # Initialize datasets for this fold
-    train_fold_ids = [f"fold_{i}" for i in range(5) if i != fold]  # other folds for training
-    val_fold_id = f"fold_{fold}"  # current fold for validation
+    train_case_ids = splits[fold]["train"]
+    val_case_ids = splits[fold]["val"]
     class_weights = torch.tensor(splits[fold]["class_weights"], dtype=torch.float).to(device)
+    # print(f"Class weights: {class_weights}")
 
-    # Combine training folds datasets
-    train_datasets = []
-    for train_fold in train_fold_ids:
-        ds = QADataset(
-            fold=train_fold,
-            preprocessed_dir=preprocessed_dir,
-            fold_paths=fold_paths,
-            transform=train_transforms
-        )
-        train_datasets.append(ds)
-    train_dataset = ConcatDataset(train_datasets)
-    del train_datasets
+
+    train_dataset = QADataset(
+        case_ids=train_case_ids,
+        preprocessed_dir=preprocessed_dir,
+        df=df,
+        transform=train_transforms
+    )
+
 
     val_dataset = QADataset(
-        fold=val_fold_id,
+        case_ids=val_case_ids,
         preprocessed_dir=preprocessed_dir,
-        fold_paths=fold_paths,
+        df=df,
         transform=val_transforms
     )
+
+
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4, collate_fn=pad_list_data_collate)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
@@ -599,7 +583,7 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 #     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
 #     return model
 
-def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
+def main(preprocessed_dir, plot_dir, folds, pretrain, device):
 
     param_grid = {
         'lr': [1e-3, 3e-4, 1e-4],
@@ -660,7 +644,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
 
         best_model, train_losses, val_losses, preds, labels, f_1, = train_one_fold(fold=fold, model=model,
                                                                                    preprocessed_dir=preprocessed_dir,
-                                                                                   img_dir=img_dir, plot_dir=plot_dir,
+                                                                                   plot_dir=plot_dir,
                                                                                    splits=folds,
                                                                                    df=df,
                                                                                    optimizer=optimizer,
@@ -729,7 +713,7 @@ def main(preprocessed_dir, plot_dir, fold_paths, pretrain, device):
 
         best_model, train_losses, val_losses, preds, labels, f_1 = train_one_fold(fold=fold, model=model,
                                                                                   preprocessed_dir=preprocessed_dir,
-                                                                                  img_dir=img_dir, plot_dir=plot_dir,
+                                                                                  plot_dir=plot_dir,
                                                                                   splits=folds,
                                                                                   df=df,
                                                                                   optimizer=optimizer,
@@ -883,18 +867,18 @@ def extract_features(train_dir, fold_paths, device, plot_dir):
 
 
 if __name__ == '__main__':
-    fold_paths = {
-        'fold_0': '/gpfs/home6/palfken/masters_thesis/fold_0',
-        'fold_1': '/gpfs/home6/palfken/masters_thesis/fold_1',
-        'fold_2': '/gpfs/home6/palfken/masters_thesis/fold_2',
-        'fold_3': '/gpfs/home6/palfken/masters_thesis/fold_3',
-        'fold_4': '/gpfs/home6/palfken/masters_thesis/fold_4',
-    }
-    preprocessed= sys.argv[1]
+    clinical_data = "/gpfs/home6/palfken/masters_thesis/Final_dice_dist1.csv"
+    df = pd.read_csv(clinical_data)
+
+    preprocessed = sys.argv[1]
+
     plot_dir = sys.argv[2]
     pretrain = sys.argv[3]
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #main(preprocessed, plot_dir, fold_paths, pretrain, device )
-    extract_features(preprocessed,fold_paths, device = 'cuda', plot_dir = plot_dir)
+    # return_splits(preprocessed,df)
+    with open('/gpfs/home6/palfken/masters_thesis/splits_classifier.json', 'r') as f:
+        splits = json.load(f)
+    splits = {int(k): v for k, v in splits.items()}
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    main(preprocessed,plot_dir, splits, pretrain, df, device)
