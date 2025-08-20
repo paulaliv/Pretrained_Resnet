@@ -416,6 +416,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                     f.write(best_report)
 
     #model.load_state_dict(best_model_wts)
+    print('Best F1: {:.4f}'.format(best_f1))
     return model, train_losses, val_losses, best_preds, best_labels, best_f1
 
 def plot_UMAP(train, y_train, neighbours, m, name, image_dir):
@@ -761,7 +762,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
 
 
             best_model, train_losses, val_losses, preds, labels, f_1,= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, img_dir=img_dir,plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
-                                        num_epochs=70, patience=15, device=device, batch_size=bs, warm_up=warmup, lr=lr)
+                                        num_epochs=50, patience=15, device=device, batch_size=bs, warm_up=warmup, lr=lr)
 
             if f_1 > best_score:
                 best_score = f_1
