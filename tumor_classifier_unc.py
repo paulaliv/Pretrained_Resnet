@@ -35,7 +35,7 @@ from monai.transforms import (
     ToTensord, EnsureTyped
 )
 
-
+from itertools import product
 train_transforms = Compose([
     RandRotate90d(keys=["image", "uncertainty"], prob=0.5, max_k=3, spatial_axes=(1, 2)),
     RandFlipd(keys=["image", "uncertainty"], prob=0.5, spatial_axis=0),
@@ -361,7 +361,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
 
-            labels_order = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF", "MyxoidlipoSarcoma", "WDLPS"]
+            labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS"]
             cm = confusion_matrix(val_true_tumors, val_pred_tumors, labels=labels_order)
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val F1 {epoch_f1:.4f}")
@@ -372,7 +372,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            labels = ["MyxofibroSarcomas", "LeiomyoSarcomas", "DTF","MyxoidlipoSarcoma","WDLPS"]
+            labels = [ "LeiomyoSarcomas", "DTF","WDLPS"]
             cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
@@ -839,12 +839,12 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
 
         plt.figure(figsize=(6, 5))
         sns.heatmap(disp, annot=True, fmt='d', cmap='Blues',
-                    xticklabels=class_names, yticklabels=class_names)
+                    xticklabels=labels_order, yticklabels=labels_order)
         plt.xlabel("Predicted")
         plt.ylabel("True")
         plt.title(f"Confusion Matrix: {metric}, (F1 averaged over folds: {f1_avg})")
         plt.tight_layout()
-        plt.savefig(os.path.join(plot_dir, f"best_conf_matrix_all_folds_{metric}_LATE_ALL.png"))
+        plt.savefig(os.path.join(plot_dir, f"Classifier_conf_matrix_all_folds_{metric}.png"))
         plt.close()
 
         print(f"Finished training with {metric}: Average F1: {f1_avg}")
