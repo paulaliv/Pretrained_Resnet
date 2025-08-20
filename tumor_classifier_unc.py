@@ -686,7 +686,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
         'lr': [1e-3, 3e-4, 1e-4],
         'batch_size': [4, 8, 16],
         'warmup_epochs': [3, 5, 8],
-        'gamma' : [1.0, 1.5,2.0]
+        'gamma' : [1.0, 1.5,2.0, 2.5]
 
     }
 
@@ -741,7 +741,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
             base_model.load_state_dict(pretrained_dict,strict=False)
 
 
-            model = ResNetWithClassifier(base_model, in_channels =1, num_classes=5)
+            model = ResNetWithClassifier(base_model, in_channels =1, num_classes=3)
             for param in model.encoder.parameters():
                 param.requires_grad = True
             model.to(device)
@@ -803,7 +803,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
             pretrained_dict = torch.load(weights)['state_dict']
             base_model.load_state_dict(pretrained_dict, strict=False)
 
-            model = ResNetWithClassifier(base_model, in_channels=1, num_classes=5)
+            model = ResNetWithClassifier(base_model, in_channels=1, num_classes=3)
             for param in model.encoder.parameters():
                 param.requires_grad = True
             model.to(device)
@@ -882,7 +882,7 @@ def extract_features(train_dir, fold_paths, device, plot_dir):
         ci_test=False,
     )
     base_model, _ = generate_model(sets)
-    model = ResNetWithClassifier(base_model, in_channels=1, num_classes=5)
+    model = ResNetWithClassifier(base_model, in_channels=1, num_classes=3)
     model.load_state_dict(torch.load("best_model_fold_0.pth", map_location=device))
     model.to(device)
     model.eval()
