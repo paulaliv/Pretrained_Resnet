@@ -188,6 +188,7 @@ class QADataset(Dataset):
 def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up, lr):
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = float('inf')
+    best_f1 = 0
     patience_counter = 0
 
     print(f"Training fold {fold} ...")
