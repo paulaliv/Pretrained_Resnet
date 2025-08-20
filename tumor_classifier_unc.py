@@ -185,7 +185,7 @@ class QADataset(Dataset):
 
 
 
-def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up, gamma):
+def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, uncertainty_metric,df, optimizer, scheduler, num_epochs, patience, device, batch_size, warm_up, lr):
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = float('inf')
     patience_counter = 0
@@ -763,7 +763,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
 
 
             best_model, train_losses, val_losses, preds, labels, f_1,= train_one_fold(fold = fold, model=model, preprocessed_dir=preprocessed_dir, img_dir=img_dir,plot_dir=plot_dir,splits=folds, uncertainty_metric=metric,df=df, optimizer=optimizer, scheduler=scheduler,
-                                        num_epochs=70, patience=15, device=device, batch_size=bs, warm_up=warmup, gamma=gamma)
+                                        num_epochs=70, patience=15, device=device, batch_size=bs, warm_up=warmup, lr=lr)
 
             if f_1 > best_score:
                 best_score = f_1
@@ -829,7 +829,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
                                                                        uncertainty_metric=metric, df=df,
                                                                        optimizer=optimizer, scheduler=scheduler,
                                                                        num_epochs=100, patience=15, device=device,
-                                                                       batch_size=best_params['batch_size'], warm_up=best_params['warmup_epochs'], gamma=best_params['gamma'])
+                                                                       batch_size=best_params['batch_size'], warm_up=best_params['warmup_epochs'], lr=best_params['lr'])
 
             all_val_preds.append(preds)
             all_val_labels.append(labels)
@@ -984,7 +984,7 @@ if __name__ == '__main__':
     plot_dir = sys.argv[3]
     pretrain = sys.argv[4]
 
-    return_splits(preprocessed,df)
+    #return_splits(preprocessed,df)
     with open('/gpfs/home6/palfken/masters_thesis/splits_classifier.json', 'r') as f:
         splits = json.load(f)
     splits = {int(k): v for k, v in splits.items()}
