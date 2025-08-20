@@ -269,9 +269,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             optimizer.zero_grad()
             with autocast():
                 outputs = model(image, uncertainty)
-                print(outputs.shape)  # should be (batch_size, 3, ...) for 3 classes
-                print(torch.unique(labels))  # should be only 0,1,2
-                print(class_weights.shape)  # should be torch.Size([3])
+
 
                 #labels_oh = one_hot(labels, num_classes=3)  # shape: [batch, 3]
 
