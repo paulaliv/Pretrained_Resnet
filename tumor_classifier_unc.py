@@ -352,7 +352,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
         epoch_f1 = report["weighted avg"]["f1-score"]
         print(f"Epoch F1: {epoch_f1:.4f}")
 
-        base_lr = lre
+        base_lr = lr
         if epoch < warmup_epochs:
             lr_scale = (epoch + 1) / warmup_epochs
             for param_group in optimizer.param_groups:
