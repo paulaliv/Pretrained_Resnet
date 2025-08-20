@@ -58,14 +58,15 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 tumor_to_idx = {
     "LeiomyoSarcomas": 0,
     "DTF": 1,
-    "WDLPS":2
+    "WDLPS":2,
+    "MyxoidlipoSarcoma":3
 }
 
 
 
 
 class ResNetWithClassifier(nn.Module):
-    def __init__(self, base_model, in_channels=1, num_classes=3):  # change num_classes to match your setting
+    def __init__(self, base_model, in_channels=1, num_classes=4):  # change num_classes to match your setting
         super().__init__()
         self.encoder = base_model
         # if base_model_path:
@@ -226,7 +227,8 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
     tumor_to_idx = {
         "LeiomyoSarcomas": 0,
         "DTF": 1,
-        "WDLPS": 2
+        "WDLPS": 2,
+        "MyxoidlipoSarcoma":4
 
     }
 
@@ -372,14 +374,14 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
 
-            labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS"]
+            labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS",  "MyxoidlipoSarcoma"]
             cm = confusion_matrix(val_true_tumors, val_pred_tumors, labels=labels_order)
 
             print(f"✅ New best model saved at epoch {epoch + 1} with val F1 {epoch_f1:.4f}")
 
             torch.save(best_model_wts, f"best_model_fold_{fold}.pth")
 
-        label_names = ["LeiomyoSarcomas", "DTF", "WDLPS"]
+        label_names = ["LeiomyoSarcomas", "DTF", "WDLPS", "MyxoidlipoSarcoma"]
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
@@ -648,7 +650,7 @@ def return_splits(dir, df):
     # filter df
     df_filtered = df[df['case_id'].isin(available_cases)].reset_index(drop=True)
     # remove specific tumor classes
-    df_filtered = df_filtered[~df_filtered['tumor_class'].isin(['MyxofibroSarcomas', 'MyxoidlipoSarcoma'])].reset_index(
+    df_filtered = df_filtered[~df_filtered['tumor_class'].isin(['MyxoidlipoSarcoma'])].reset_index(
         drop=True)
 
 
@@ -753,7 +755,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
             base_model.load_state_dict(pretrained_dict,strict=False)
 
 
-            model = ResNetWithClassifier(base_model, in_channels =1, num_classes=3)
+            model = ResNetWithClassifier(base_model, in_channels =1, num_classes=4)
             for param in model.encoder.parameters():
                 param.requires_grad = True
             model.to(device)
@@ -815,7 +817,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
             pretrained_dict = torch.load(weights)['state_dict']
             base_model.load_state_dict(pretrained_dict, strict=False)
 
-            model = ResNetWithClassifier(base_model, in_channels=1, num_classes=3)
+            model = ResNetWithClassifier(base_model, in_channels=1, num_classes=4)
             for param in model.encoder.parameters():
                 param.requires_grad = True
             model.to(device)
@@ -847,7 +849,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
         val_labels = np.concatenate(all_val_labels, axis=0)
         f1_avg = np.mean(all_f1)
 
-        labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS"]
+        labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS", "MyxoidlipoSarcoma"]
 
         disp = confusion_matrix(val_labels, val_preds, labels=[0,1,2])
 
@@ -894,7 +896,7 @@ def extract_features(train_dir, fold_paths, device, plot_dir):
         ci_test=False,
     )
     base_model, _ = generate_model(sets)
-    model = ResNetWithClassifier(base_model, in_channels=1, num_classes=3)
+    model = ResNetWithClassifier(base_model, in_channels=1, num_classes=4)
     model.load_state_dict(torch.load("best_model_fold_0.pth", map_location=device))
     model.to(device)
     model.eval()
@@ -984,7 +986,7 @@ if __name__ == '__main__':
     plot_dir = sys.argv[3]
     pretrain = sys.argv[4]
 
-    #return_splits(preprocessed,df)
+    return_splits(preprocessed,df)
     with open('/gpfs/home6/palfken/masters_thesis/splits_classifier.json', 'r') as f:
         splits = json.load(f)
     splits = {int(k): v for k, v in splits.items()}
