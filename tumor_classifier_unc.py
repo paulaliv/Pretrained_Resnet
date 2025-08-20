@@ -379,12 +379,13 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
 
             torch.save(best_model_wts, f"best_model_fold_{fold}.pth")
 
+        label_names = ["LeiomyoSarcomas", "DTF", "WDLPS"]
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
             best_model_wts = copy.deepcopy(model.state_dict())
             best_report = classification_report(val_true_tumors, val_pred_tumors, digits=4, zero_division=0)
-            labels = [ "LeiomyoSarcomas", "DTF","WDLPS"]
-            cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = labels)
+
+            cm = confusion_matrix(val_true_tumors,val_pred_tumors, labels = [0,1,2])
             #disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(idx_to_tumor.values()))
 
             # print(f"✅ New best model saved at epoch {epoch + 1} with val loss {epoch_val_loss:.4f}")
@@ -398,7 +399,7 @@ def train_one_fold(fold, model, preprocessed_dir, img_dir, plot_dir, splits, unc
                 model.load_state_dict(best_model_wts)
 
                 plt.figure(figsize=(8, 6))  # Increase figure size
-                sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=labels, yticklabels=labels)
+                sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=label_names, yticklabels=label_names)
                 plt.title("Confusion Matrix - Fold 0", fontsize=14)
                 plt.xlabel("Predicted Label", fontsize=12)
                 plt.ylabel("True Label", fontsize=12)
