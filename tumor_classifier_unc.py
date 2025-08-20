@@ -633,8 +633,9 @@ def return_splits(dir, df):
     # filter df
     df_filtered = df[df['case_id'].isin(available_cases)].reset_index(drop=True)
     # remove specific tumor classes
-    df_filtered = df_filtered[~df_filtered['tumor_class'].isin(['MyxofibroSarcoma', 'MyxoidlipoSarcoma'])].reset_index(
+    df_filtered = df_filtered[~df_filtered['tumor_class'].isin(['MyxofibroSarcomas', 'MyxoidlipoSarcoma'])].reset_index(
         drop=True)
+
 
 
     # --- Stratified K-Folds ---
