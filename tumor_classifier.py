@@ -13,6 +13,7 @@ import torch.optim as optim
 import numpy as np
 import pandas as pd
 import sys
+import json
 import os
 from torch.cuda.amp import GradScaler, autocast
 import matplotlib.pyplot as plt
@@ -871,7 +872,6 @@ if __name__ == '__main__':
     df = pd.read_csv(clinical_data)
 
     preprocessed = sys.argv[1]
-
     plot_dir = sys.argv[2]
     pretrain = sys.argv[3]
 
