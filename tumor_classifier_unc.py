@@ -989,7 +989,7 @@ if __name__ == '__main__':
     plot_dir = sys.argv[3]
     pretrain = sys.argv[4]
 
-    return_splits(preprocessed,df)
+    #return_splits(preprocessed,df)
     with open('/gpfs/home6/palfken/masters_thesis/splits_classifier.json', 'r') as f:
         splits = json.load(f)
     splits = {int(k): v for k, v in splits.items()}

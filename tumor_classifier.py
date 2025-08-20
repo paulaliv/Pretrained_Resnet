@@ -646,7 +646,7 @@ def main(preprocessed_dir, plot_dir, folds, df, pretrain, device):
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, min_lr=1e-6)
         # criterion = nn.CrossEntropyLoss()
 
-        best_model, train_losses, val_losses, preds, labels, f_1, = train_one_fold(fold=fold, model=model,
+        best_model, train_losses, val_losses, preds, labels, f_1, = train_one_fold(fold=1, model=model,
                                                                                    preprocessed_dir=preprocessed_dir,
                                                                                    plot_dir=plot_dir,
                                                                                    splits=folds,
