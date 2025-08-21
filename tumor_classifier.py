@@ -300,7 +300,7 @@ def train_one_fold(fold, model, preprocessed_dir, plot_dir, splits, df, optimize
         print(f"Epoch F1: {epoch_f1:.4f}")
 
         base_lr = lr
-        warmup_epchs = warm_up
+        warmup_epochs = warm_up
         if epoch < warmup_epochs:
             lr_scale = (epoch + 1) / warmup_epochs
             for param_group in optimizer.param_groups:
