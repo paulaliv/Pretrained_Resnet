@@ -605,7 +605,7 @@ def main(preprocessed_dir, plot_dir, folds, df, pretrain, device):
         'gamma' : [1.0]
 
     }
-
+    best_score = 0
     for lr, bs, warmup, gamma in product(
             param_grid['lr'], param_grid['batch_size'],
             param_grid['warmup_epochs'], param_grid['gamma']
