@@ -589,6 +589,13 @@ def plot_mmd_diag_vs_offdiag(mmd_matrix, y_train, plot_dir):
 #     print(f"✅ Loaded {len(pretrained_dict)} pretrained layers from MedicalNet")
 #     return model
 
+def pad_to_max_length(loss_lists):
+    max_len = max(len(lst) for lst in loss_lists)
+    padded = []
+    for lst in loss_lists:
+        padded.append(np.pad(lst, (0, max_len - len(lst)), constant_values=np.nan))
+    return np.array(padded)
+
 def main(preprocessed_dir, plot_dir, folds, df, pretrain, device):
 
     param_grid = {
@@ -672,6 +679,8 @@ def main(preprocessed_dir, plot_dir, folds, df, pretrain, device):
 
     all_val_preds = []
     all_val_labels = []
+    all_train_losses = []
+    all_val_losses = []
     all_f1 = []
     for fold in range(5):
         weights = os.path.join(pretrain, 'resnet_18_23dataset.pth')
@@ -733,17 +742,31 @@ def main(preprocessed_dir, plot_dir, folds, df, pretrain, device):
         all_val_preds.append(preds)
         all_val_labels.append(labels)
         all_f1.append(f_1)
+        all_train_losses.append(train_losses)
+        all_val_losses.append(val_losses)
 
-        plt.plot(train_losses, label='Train Loss')
-        plt.plot(val_losses, label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.title('Loss Curves')
-        plt.savefig(os.path.join(plot_dir, f'pretrain_loss_curves_baseline.png'))
+
 
     val_preds = np.concatenate(all_val_preds, axis=0)
     val_labels = np.concatenate(all_val_labels, axis=0)
+
+    padded_train_losses = pad_to_max_length(all_train_losses)
+    avg_train_losses = np.nanmean(padded_train_losses, axis=0)
+
+    padded_val_losses = pad_to_max_length(all_val_losses)
+    avg_val_losses = np.nanmean(padded_val_losses, axis=0)
+
+
+
+
+    plt.plot(avg_train_losses, label='Train Loss')
+    plt.plot(avg_val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Loss Curves averaged across Folds')
+    plt.savefig(os.path.join(plot_dir, f'pretrain_loss_curves_baseline.png'))
+
     f1_avg = np.mean(all_f1)
 
     labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS", "MyxoidlipoSarcoma"]
