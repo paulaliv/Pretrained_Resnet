@@ -854,7 +854,7 @@ def main(preprocessed_dir, img_dir, plot_dir, folds,pretrain, df, device):
 
         labels_order = ["LeiomyoSarcomas", "DTF", "WDLPS", "MyxoidlipoSarcoma"]
 
-        disp = confusion_matrix(val_labels, val_preds, labels=[0,1,2])
+        disp = confusion_matrix(val_labels, val_preds, labels=[0,1,2,3])
 
         plt.figure(figsize=(6, 5))
         sns.heatmap(disp, annot=True, fmt='d', cmap='Blues',
